@@ -18,6 +18,7 @@ export const initializeServices = async (): Promise<void> => {
 
     // Initialize application services
     documentService = new DocumentService(syncClient, keyStorage);
+    ;(globalThis as any)._docSvc = documentService
     editorService = new EditorService();
 
     console.log('Services initialized successfully');
@@ -40,6 +41,10 @@ export const connectToDocument = async (document: Document): Promise<void> => {
   ensureServicesInitialized();
   return await documentService!.connectToDocument(document);
 };
+export const setKeyForDocument = async (documentId: string, key: string): Promise<void> => {
+  ensureServicesInitialized();
+  return await documentService!.setKeyForDocument(documentId, key)
+}
 
 // ============================================================================
 // Editor Actions
@@ -81,6 +86,11 @@ export const getCurrentDocument = (): Document | null => {
   ensureServicesInitialized();
   return documentService!.getCurrentDocument();
 };
+
+export const getShareLink = async (documentId: string): Promise<string> => {
+  ensureServicesInitialized();
+  return await documentService!.shareDocument(documentId)
+}
 // Service instances (singleton pattern)
 let documentService: DocumentService | null = null;
 let editorService: EditorService | null = null;

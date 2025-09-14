@@ -6,6 +6,7 @@ type Props = {
   onTitleChange: (v: string) => void;
   zoom: number;
   onZoomChange: (v: number) => void;
+  onShareClick?: () => void;
 };
 
 export default function TopBar({
@@ -13,6 +14,7 @@ export default function TopBar({
   onTitleChange,
   zoom,
   onZoomChange,
+  onShareClick,
 }: Props) {
   const spanRef = useRef<HTMLSpanElement>(null);
   const [inputWidth, setInputWidth] = useState(0);
@@ -70,7 +72,11 @@ export default function TopBar({
         </div>
       </div>
       <div className="ml-auto pl-4 pr-3 flex items-center gap-2 shrink-0">
-        <button className="hidden sm:inline-flex items-center gap-1 px-3 py-1 rounded border hover:bg-slate-50">
+        <button
+          className="hidden sm:inline-flex items-center gap-1 px-3 py-1 rounded border hover:bg-slate-50"
+          onClick={onShareClick}
+          title="共有リンクをコピー"
+        >
           共有
         </button>
         <div className="size-12 aspect-square p-2">

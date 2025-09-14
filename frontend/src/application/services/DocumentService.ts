@@ -20,12 +20,38 @@ export class DocumentService {
     private keyStorage: KeyStorage
   ) {}
 
+  private async ensureServerKeyPosted(): Promise<void> {
+    try {
+      const paramKey = 'V0_11_PARAM_MESSAGE_4_CARRY_2_KS_PBS_GAUSSIAN_2M64'
+      const skStore = new ServerKeyStorage()
+      const csk_b64 = await skStore.loadCompressedServerKey(paramKey)
+      if (csk_b64) {
+        const api = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001'
+        console.log('[doc] post server key if needed')
+        await fetch(`${api}/keys/set_server_key`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ server_key_b64: csk_b64 }),
+        }).catch(() => {})
+      }
+    } catch (e) {
+      console.warn('[doc] ensureServerKeyPosted failed', e)
+    }
+  }
+
   /**
    * Register callback for document updates
    * @param callback Callback function to receive document updates
    */
   onDocumentUpdate(callback: (document: Document) => void): void {
     this.documentUpdateCallbacks.push(callback);
+  }
+
+  /**
+   * Save provided client key for a specific document
+   */
+  async setKeyForDocument(documentId: string, keyString: string): Promise<void> {
+    await this.keyStorage.saveKey(documentId, keyString)
   }
 
   /**
@@ -60,6 +86,16 @@ export class DocumentService {
     this.currentDocument = document;
 
     return document;
+  }
+
+  /**
+   * Create document object with provided id (for shared URLs)
+   */
+  async createDocumentWithId(documentId: string): Promise<Document> {
+    // 既にキーが保存されている前提（URLフラグメント等で投入）
+    const document: Document = { id: documentId, text: '', timestamp: Date.now() }
+    this.currentDocument = document
+    return document
   }
 
   /**
@@ -100,6 +136,8 @@ export class DocumentService {
     }
 
     try {
+      // make sure server has a key even after restart
+      await this.ensureServerKeyPosted()
       // Connect to WebSocket
       console.log('[doc] connect start', { docId: document.id })
       await this.syncClient.connect(document.id);
@@ -235,11 +273,10 @@ export class DocumentService {
    * @returns Share URL
    */
   private generateShareUrl(documentId: string, key: string): string {
-    // TODO: Implement actual URL generation logic
-    const url = new URL('https://example.com/editor');
-    url.searchParams.set('doc', documentId);
-    url.searchParams.set('key', key);
-    return url.toString();
+    // フラグメントに鍵を載せる: /doc/{doc_id}#k={base64}
+    const origin = typeof window !== 'undefined' ? window.location.origin : ''
+    const base = origin || ''
+    return `${base}/doc/${documentId}#k=${encodeURIComponent(key)}`
   }
 
   /**

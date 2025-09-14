@@ -13,6 +13,7 @@ import {
   emitTextChange,
   setupEditor,
   setupDocumentUpdateListener,
+  getShareLink,
 } from './actions';
 
 const DEFAULT_TITLE = '無題のドキュメント';
@@ -175,31 +176,6 @@ export default function Page() {
   }
 
   return (
-    <>
-      {/* test buttons */}
-      <button
-        onClick={callTest}
-        className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto"
-      >
-        {loading ? 'Testing...' : 'Call /test'}
-      </button>
-      <button
-        onClick={runWasmOnTest}
-        className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto"
-      >
-        Wasm decorate /test
-      </button>
-
-      {apiResult && (
-        <pre className="text-xs p-3 bg-black/[.05] dark:bg-white/[.06] rounded w-full max-w-xl break-words whitespace-pre-wrap">
-          {apiResult}
-        </pre>
-      )}
-      {wasmResult && (
-        <pre className="text-xs p-3 bg-black/[.05] dark:bg-white/[.06] rounded w-full max-w-xl break-words whitespace-pre-wrap">
-          {wasmResult}
-        </pre>
-      )}
       <div className="h-screen flex flex-col bg-slate-100 text-slate-800">
         <div className="flex-shrink-0">
           <TopBar
@@ -207,6 +183,16 @@ export default function Page() {
             onTitleChange={setTitle}
             zoom={zoom}
             onZoomChange={setZoom}
+            onShareClick={async () => {
+              try {
+                if (!currentDocument) return;
+                const url = await getShareLink(currentDocument.id);
+                await navigator.clipboard.writeText(url);
+                alert('共有リンクをコピーしました');
+              } catch (e: any) {
+                alert(`共有リンクの生成に失敗: ${e?.message || String(e)}`);
+              }
+            }}
           />
           <Toolbar
             zoom={zoom}
@@ -254,6 +240,5 @@ export default function Page() {
           </div>
         </div>
       </div>
-    </>
   );
 }
