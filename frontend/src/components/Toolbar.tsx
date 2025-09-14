@@ -84,7 +84,7 @@ export default function Toolbar(props: Props) {
         setZoomInput(String(Math.round(zoom * 100)));
     }, [zoom]);
     const applyZoom = () => {
-        let halfWidth = toHalfWidthNumber(zoomInput);
+        const halfWidth = toHalfWidthNumber(zoomInput);
 
         let val = Number(halfWidth);
         if (isNaN(val)) return;
