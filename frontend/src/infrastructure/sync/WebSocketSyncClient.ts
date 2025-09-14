@@ -9,13 +9,12 @@ export class WebSocketSyncClient implements SyncClient {
   private ws: WebSocket | null = null
   private documentId: string | null = null
   private updateCallbacks: ((data: WsServerSelected) => void)[] = []
-  
-  private reconnectAttempts = 0
-  private readonly maxReconnectAttempts = 5
-  private readonly reconnectDelay = 1000 // 1秒
 
-  constructor() {
-  }
+  private reconnectAttempts = 0;
+  private readonly maxReconnectAttempts = 5;
+  private readonly reconnectDelay = 1000; // 1秒
+
+  constructor() {}
 
   /**
    * Connect to specified document
@@ -95,24 +94,23 @@ export class WebSocketSyncClient implements SyncClient {
     this.updateCallbacks.push(callback)
   }
 
-
   /**
    * Send encrypted data to server
    * @param encryptedDocument Encrypted document data
    */
   async sendUpdate(update: WsClientUpdate): Promise<void> {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      throw new Error('WebSocket is not connected')
+      throw new Error('WebSocket is not connected');
     }
-    
+
     if (!this.documentId) {
-      throw new Error('No document connected')
+      throw new Error('No document connected');
     }
 
     try {
       this.ws.send(JSON.stringify(update))
     } catch (error) {
-      throw new Error(`Failed to send update: ${error}`)
+      throw new Error(`Failed to send update: ${error}`);
     }
   }
 
@@ -129,13 +127,15 @@ export class WebSocketSyncClient implements SyncClient {
       const response = await fetch(url)
       
       if (!response.ok) {
-        throw new Error(`Failed to fetch document: ${response.status} ${response.statusText}`)
+        throw new Error(
+          `Failed to fetch document: ${response.status} ${response.statusText}`
+        );
       }
       
       const data: WsServerSelected = await response.json()
       return data
     } catch (error) {
-      throw new Error(`Failed to get document: ${error}`)
+      throw new Error(`Failed to get document: ${error}`);
     }
   }
 }

@@ -10,7 +10,7 @@ export interface SyncClient {
    * Connect to specified document
    * @param documentId Document ID
    */
-  connect(documentId: string): Promise<void>
+  connect(documentId: string): Promise<void>;
 
   /**
    * Send encrypted data to server

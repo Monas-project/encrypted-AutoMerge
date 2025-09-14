@@ -1,17 +1,26 @@
+<<<<<<< HEAD
 import { Document } from '../types/Document'
 import { SyncClient } from '../../infrastructure/sync/SyncClient'
 import { KeyStorage } from '../../infrastructure/storage/KeyStorage'
 import { GetContentResponse, TIMESTAMP_DIGITS, WsClientUpdate, WsServerSelected } from '../types/fhe'
 import { loadTfhe, nextMonotonicTs, encryptU64ToDigitsB64Array, encryptContentToNibbleArrayB64, restoreClientKey, decryptDigitsB64ArrayToU64, decryptContentFromNibbleArrayB64 } from '../../infrastructure/crypto/TfheShortint'
 import { v4 as uuidv4 } from 'uuid'
+=======
+import { Document, DocumentData, EncryptedDocument } from '../types/Document';
+import { DocumentEncryption } from '../../infrastructure/crypto/DocumentEncryption';
+import { SyncClient } from '../../infrastructure/sync/SyncClient';
+import { KeyStorage } from '../../infrastructure/storage/KeyStorage';
+import { v4 as uuidv4 } from 'uuid';
+>>>>>>> main
 
 /**
  * Document service implementation
  * Manages document creation, loading, updating, and sharing
  */
 export class DocumentService {
-  private currentDocument: Document | null = null
-  private isConnected = false
+  private currentDocument: Document | null = null;
+  private isConnected = false;
+  private documentUpdateCallbacks: ((document: Document) => void)[] = [];
 
   constructor(
     private syncClient: SyncClient,
@@ -19,11 +28,28 @@ export class DocumentService {
   ) {}
 
   /**
+   * Register callback for document updates
+   * @param callback Callback function to receive document updates
+   */
+  onDocumentUpdate(callback: (document: Document) => void): void {
+    this.documentUpdateCallbacks.push(callback);
+  }
+
+  /**
+   * Get current document
+   * @returns Current document or null
+   */
+  getCurrentDocument(): Document | null {
+    return this.currentDocument;
+  }
+
+  /**
    * Create new document
    * @returns Created document
    */
   async createDocument(): Promise<Document> {
     // 1. Generate new document ID
+<<<<<<< HEAD
     const documentId = uuidv4()
     
     // 2. Generate shortint keys via worker path (or later from worker cache)
@@ -31,17 +57,28 @@ export class DocumentService {
     const keyString = await this.ensureClientKey(documentId)
     await this.keyStorage.saveKey(documentId, keyString)
     
+=======
+    const documentId = uuidv4();
+
+    // 2. Generate encryption key
+    const key = await this.documentEncryption.generateKey();
+
+    // 3. Save key as string
+    const keyString = await this.documentEncryption.exportKey(key);
+    await this.keyStorage.saveKey(documentId, keyString);
+
+>>>>>>> main
     // 4. Create empty document
     const document: Document = {
       id: documentId,
       text: '',
-      timestamp: Date.now()
-    }
-    
+      timestamp: Date.now(),
+    };
+
     // 5. Store as current document
-    this.currentDocument = document
-    
-    return document
+    this.currentDocument = document;
+
+    return document;
   }
 
   /**
@@ -51,10 +88,11 @@ export class DocumentService {
    */
   async loadDocument(shareUrl: string): Promise<Document> {
     // 1. Extract documentId and key from URL
-    const urlData = this.parseShareUrl(shareUrl)
+    const urlData = this.parseShareUrl(shareUrl);
     if (!urlData) {
-      throw new Error('Invalid share URL')
+      throw new Error('Invalid share URL');
     }
+<<<<<<< HEAD
     
     const _keyString = urlData.key // 互換用: 既存URLに載っている場合
     
@@ -66,10 +104,34 @@ export class DocumentService {
     // 5. Create document object
     const document: Document = { id: urlData.documentId, text: '', timestamp: Date.now() }
     
+=======
+
+    // 2. Import key
+    const key = await this.documentEncryption.importKey(urlData.key);
+
+    // 3. Get encrypted data from server
+    const encryptedDocument = await this.syncClient.getDocument(
+      urlData.documentId
+    );
+
+    // 4. Decrypt encrypted data (temporary implementation)
+    const contentData = encryptedDocument.content_cts[0]; // 配列の最初の要素を使用
+    const documentData: DocumentData = JSON.parse(
+      await this.documentEncryption.decrypt(contentData, key)
+    );
+
+    // 5. Create document object
+    const document: Document = {
+      id: encryptedDocument.doc_id,
+      text: documentData.text,
+      timestamp: documentData.timestamp,
+    };
+
+>>>>>>> main
     // 6. Store as current document
-    this.currentDocument = document
-    
-    return document
+    this.currentDocument = document;
+
+    return document;
   }
 
   /**
@@ -78,23 +140,29 @@ export class DocumentService {
    */
   async connectToDocument(document: Document): Promise<void> {
     if (!this.currentDocument || this.currentDocument.id !== document.id) {
-      this.currentDocument = document
+      this.currentDocument = document;
     }
 
     try {
       // Connect to WebSocket
-      await this.syncClient.connect(document.id)
-      this.isConnected = true
+      await this.syncClient.connect(document.id);
+      this.isConnected = true;
 
       // Set up remote update listener
+<<<<<<< HEAD
       this.syncClient.onUpdate(async (selected: WsServerSelected) => {
         await this.handleRemoteUpdate(selected)
       })
+=======
+      this.syncClient.onUpdate(async encryptedDocument => {
+        await this.handleRemoteUpdate(encryptedDocument);
+      });
+>>>>>>> main
 
-      console.log(`Connected to document: ${document.id}`)
+      console.log(`Connected to document: ${document.id}`);
     } catch (error) {
-      console.error('Failed to connect to document:', error)
-      throw error
+      console.error('Failed to connect to document:', error);
+      throw error;
     }
   }
 
@@ -102,19 +170,30 @@ export class DocumentService {
    * Handle remote document updates
    * @param encryptedDocument Encrypted document from server
    */
+<<<<<<< HEAD
   private async handleRemoteUpdate(selected: WsServerSelected): Promise<void> {
+=======
+  private async handleRemoteUpdate(
+    encryptedDocument: EncryptedDocument
+  ): Promise<void> {
+>>>>>>> main
     if (!this.currentDocument) {
-      console.warn('Received remote update but no current document')
-      return
+      console.warn('Received remote update but no current document');
+      return;
     }
 
     try {
       // Get encryption key
+<<<<<<< HEAD
       const keyString = await this.keyStorage.loadKey(selected.doc_id)
+=======
+      const keyString = await this.keyStorage.loadKey(encryptedDocument.doc_id);
+>>>>>>> main
       if (!keyString) {
-        console.error('Key not found for remote update')
-        return
+        console.error('Key not found for remote update');
+        return;
       }
+<<<<<<< HEAD
       const tfhe = await loadTfhe()
       const cks = await restoreClientKey(tfhe, keyString)
       // decrypt selected id -> u64
@@ -126,41 +205,41 @@ export class DocumentService {
       if (!res.ok) return
       const json = (await res.json()) as GetContentResponse
       const text = decryptContentFromNibbleArrayB64(tfhe, cks, json.content_cts)
+=======
+      const key = await this.documentEncryption.importKey(keyString);
+
+      // TODO: WASM暗号化サービスで新しい構造から復号化
+      // 現在は一時的にレガシー構造として処理
+
+      // 新しい構造からコンテンツを復号化（WASMサービス実装後に置き換え）
+      const contentData = encryptedDocument.content_cts[0]; // 配列の最初の要素を使用
+      const documentData: DocumentData = JSON.parse(
+        await this.documentEncryption.decrypt(contentData, key)
+      );
+>>>>>>> main
 
       // Update current document
       this.currentDocument = {
         ...this.currentDocument,
+<<<<<<< HEAD
         text,
         timestamp: Date.now()
       }
+=======
+        text: documentData.text,
+        timestamp: documentData.timestamp,
+      };
+>>>>>>> main
 
-      console.log('Document updated from remote:', this.currentDocument.id)
+      // Notify UI layer about the update
+      this.documentUpdateCallbacks.forEach(callback => {
+        callback(this.currentDocument!);
+      });
+
+      console.log('Document updated from remote:', this.currentDocument.id);
     } catch (error) {
-      console.error('Failed to handle remote update:', error)
+      console.error('Failed to handle remote update:', error);
     }
-  }
-
-  /**
-   * Disconnect from current document
-   */
-  disconnectFromDocument(): void {
-    this.isConnected = false
-    this.currentDocument = null
-    console.log('Disconnected from document')
-  }
-
-  /**
-   * Get current document
-   */
-  getCurrentDocument(): Document | null {
-    return this.currentDocument
-  }
-
-  /**
-   * Check if connected to a document
-   */
-  isConnectedToDocument(): boolean {
-    return this.isConnected && this.currentDocument !== null
   }
 
   /**
@@ -173,14 +252,15 @@ export class DocumentService {
     const updatedDocument: Document = {
       ...document,
       text: newText,
-      timestamp: Date.now()
-    }
-    
+      timestamp: Date.now(),
+    };
+
     // 2. Get key
-    const keyString = await this.keyStorage.loadKey(document.id)
+    const keyString = await this.keyStorage.loadKey(document.id);
     if (!keyString) {
-      throw new Error('Key not found')
+      throw new Error('Key not found');
     }
+<<<<<<< HEAD
     const tfhe = await loadTfhe()
     const cks = await restoreClientKey(tfhe, keyString)
     
@@ -192,11 +272,27 @@ export class DocumentService {
     const id_cts = encryptU64ToDigitsB64Array(tfhe, cks, randId)
     const content_cts = encryptContentToNibbleArrayB64(tfhe, cks, newText)
     
+=======
+    const key = await this.documentEncryption.importKey(keyString);
+
+    // 3. Create encrypted data
+    const documentData: DocumentData = {
+      text: newText,
+      timestamp: updatedDocument.timestamp,
+    };
+
+    const encryptedContent = await this.documentEncryption.encrypt(
+      JSON.stringify(documentData),
+      key
+    );
+
+>>>>>>> main
     // 4. Update current document
-    this.currentDocument = updatedDocument
-    
+    this.currentDocument = updatedDocument;
+
     // 5. Send to server (if connected)
     if (this.isConnected) {
+<<<<<<< HEAD
       const outbound: WsClientUpdate = {
         doc_id: document.id,
         ts_cts: ts_cts as unknown as string[],
@@ -205,6 +301,21 @@ export class DocumentService {
         content_cts: content_cts as unknown as string[],
       }
       await this.syncClient.sendUpdate(outbound)
+=======
+      // TODO: WASM暗号化サービスで新しい構造に変換
+      // 現在は一時的にレガシー構造を使用
+
+      // 新しい構造に変換（WASMサービス実装後に置き換え）
+      const encryptedDocument: EncryptedDocument = {
+        doc_id: document.id,
+        ts_cts: [], // WASMで生成
+        id_cts: [], // WASMで生成
+        content_id: updatedDocument.timestamp.toString(),
+        content_cts: [encryptedContent], // 暗号化済みデータを配列として送信
+      };
+
+      await this.syncClient.sendUpdate(encryptedDocument);
+>>>>>>> main
     }
   }
 
@@ -215,13 +326,13 @@ export class DocumentService {
    */
   async shareDocument(documentId: string): Promise<string> {
     // 1. Get key
-    const keyString = await this.keyStorage.loadKey(documentId)
+    const keyString = await this.keyStorage.loadKey(documentId);
     if (!keyString) {
-      throw new Error('Key not found')
+      throw new Error('Key not found');
     }
-    
+
     // 2. Generate share URL
-    return this.generateShareUrl(documentId, keyString)
+    return this.generateShareUrl(documentId, keyString);
   }
 
   /**
@@ -232,10 +343,10 @@ export class DocumentService {
    */
   private generateShareUrl(documentId: string, key: string): string {
     // TODO: Implement actual URL generation logic
-    const url = new URL('https://example.com/editor')
-    url.searchParams.set('doc', documentId)
-    url.searchParams.set('key', key)
-    return url.toString()
+    const url = new URL('https://example.com/editor');
+    url.searchParams.set('doc', documentId);
+    url.searchParams.set('key', key);
+    return url.toString();
   }
 
   /**
@@ -243,20 +354,22 @@ export class DocumentService {
    * @param url Share URL
    * @returns Document ID and key (null if parsing fails)
    */
-  private parseShareUrl(url: string): { documentId: string; key: string } | null {
+  private parseShareUrl(
+    url: string
+  ): { documentId: string; key: string } | null {
     // TODO: Implement actual URL parsing logic
     try {
-      const urlObj = new URL(url)
-      const docId = urlObj.searchParams.get('doc')
-      const key = urlObj.searchParams.get('key')
-      
+      const urlObj = new URL(url);
+      const docId = urlObj.searchParams.get('doc');
+      const key = urlObj.searchParams.get('key');
+
       if (!docId || !key) {
-        return null
+        return null;
       }
-      
-      return { documentId: docId, key: key }
+
+      return { documentId: docId, key: key };
     } catch {
-      return null
+      return null;
     }
   }
 
