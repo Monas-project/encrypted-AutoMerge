@@ -64,7 +64,7 @@ export default function EditorPage(props: Props) {
             >
                 <div
                     ref={ref}
-                    className="w-full h-full overflow-auto"
+                    className="w-full h-full overflow-auto focus:outline-none"
                     contentEditable
                     suppressContentEditableWarning
                     spellCheck={false}
@@ -78,7 +78,7 @@ export default function EditorPage(props: Props) {
                         lineHeight: 1.6,
                     }}
                 >
-                    <p className="mb-3">ここにテキストを入力</p>
+                    <p className="mb-3">Enter text ...</p>
                 </div>
             </div>
 

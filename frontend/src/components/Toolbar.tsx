@@ -2,7 +2,7 @@ import { ChevronDownIcon, ChevronUpIcon } from "@heroicons/react/16/solid";
 import { Bars3BottomLeftIcon, Bars3BottomRightIcon, Bars3Icon, Bars4Icon, PencilIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { useEffect, useState } from "react";
-import { LuHighlighter } from "react-icons/lu";
+import { LuEllipsisVertical, LuHighlighter } from "react-icons/lu";
 import { MdChecklist, MdFormatBold, MdFormatClear, MdFormatColorText, MdFormatIndentDecrease, MdFormatIndentIncrease, MdFormatItalic, MdFormatLineSpacing, MdFormatListBulleted, MdFormatListNumbered, MdFormatUnderlined, MdInsertLink, MdOutlineAddComment, MdOutlineFormatPaint, MdOutlineInsertPhoto, MdOutlinePrint, MdRedo, MdSearch, MdSpellcheck, MdTranslate, MdUndo } from "react-icons/md";
 
 type Props = {
@@ -44,39 +44,39 @@ export default function Toolbar(props: Props) {
         );
     };
 
-    const buttonLayout1 = "size-8 aspect-square flex items-center justify-center hover:bg-blue-200 rounded";
-    const buttonLayout2 = "size-8 aspect-square flex items-center justify-center rounded font-bold";
+    const buttonLayout1 = "size-7 aspect-square flex items-center justify-center hover:bg-blue-200 rounded";
+    const buttonLayout2 = "size-7 aspect-square flex items-center justify-center rounded";
 
     const buttonGroup1 = [
-        { id: 'search', icon: MdSearch, label: 'メニューを検索' },
-        { id: 'undo', icon: MdUndo, label: '元に戻す' },
-        { id: 'redo', icon: MdRedo, label: 'やり直し' },
-        { id: 'print', icon: MdOutlinePrint, label: '印刷' },
-        { id: 'correction', icon: MdSpellcheck, label: 'スペルと文法のチェック' },
-        { id: 'formatPainter', icon: MdOutlineFormatPaint, label: '書式を張り付け' },
+        { id: 'search', icon: MdSearch, label: 'Search the menus' },
+        { id: 'undo', icon: MdUndo, label: 'Undo' },
+        { id: 'redo', icon: MdRedo, label: 'Redo' },
+        { id: 'print', icon: MdOutlinePrint, label: 'Print' },
+        { id: 'spellGrammarCheck', icon: MdSpellcheck, label: 'Spellig and gramer check' },
+        { id: 'formatPainter', icon: MdOutlineFormatPaint, label: 'Paint format' },
     ];
 
     const buttonGroup2 = [
-        { id: 'bold', state: bold, onClick: () => setBold(!bold), icon: MdFormatBold, label: '太字' },
-        { id: 'italic', state: italic, onClick: () => setItalic(!italic), icon: MdFormatItalic, label: '斜体' },
-        { id: 'underline', state: underline, onClick: () => setUnderline(!underline), icon: MdFormatUnderlined, label: '下線' },
-        { id: 'textColor', icon: MdFormatColorText, label: 'テキストの色' },
-        { id: 'highlightColor', icon: LuHighlighter, label: 'ハイライトの色' },
+        { id: 'bold', state: bold, onClick: () => setBold(!bold), icon: MdFormatBold, label: 'Bold' },
+        { id: 'italic', state: italic, onClick: () => setItalic(!italic), icon: MdFormatItalic, label: 'Italic' },
+        { id: 'underline', state: underline, onClick: () => setUnderline(!underline), icon: MdFormatUnderlined, label: 'Underline' },
+        { id: 'textColor', icon: MdFormatColorText, label: 'Text color' },
+        { id: 'bgColor', icon: LuHighlighter, label: 'Highlight color' },
     ];
 
     const buttonGroup3 = [
-        { id: 'addLink', icon: MdInsertLink, label: 'リンクを挿入' },
-        { id: 'addComment', icon: MdOutlineAddComment, label: 'コメントを追加' },
-        { id: 'addImage', icon: MdOutlineInsertPhoto, label: '画像の挿入' },
+        { id: 'insertLink', icon: MdInsertLink, label: 'Insert link' },
+        { id: 'insertComment', icon: MdOutlineAddComment, label: 'Add comment' },
+        { id: 'insertImage', icon: MdOutlineInsertPhoto, label: 'Insert image' },
     ];
     const buttonGroup4 = [
-        { id: 'lineSpacingMenuButton', icon: MdFormatLineSpacing, label: '行間隔と段落の間隔', chevron: true },
-        { id: 'addChecklistButton', icon: MdChecklist, label: 'チェックリスト', chevron: false },
-        { id: 'addBulletButton', icon: MdFormatListBulleted, label: '箇条書き', chevron: true },
-        { id: 'addNumberedBulletButton', icon: MdFormatListNumbered, label: '番号付リスト', chevron: true },
-        { id: 'outdentButton', icon: MdFormatIndentDecrease, label: 'インデント減', chevron: false },
-        { id: 'indentButton', icon: MdFormatIndentIncrease, label: 'インデント増', chevron: false },
-        { id: 'clearFormattingButton', icon: MdFormatClear, label: '書式をクリア', chevron: false },
+        { id: 'lineSpacingMenu', icon: MdFormatLineSpacing, label: 'Line & paragraph spacing', chevron: true },
+        { id: 'addChecklist', icon: MdChecklist, label: 'Checklist menu', chevron: false },
+        { id: 'addBullet', icon: MdFormatListBulleted, label: 'Bulleted list', chevron: true },
+        { id: 'addNumberedBullet', icon: MdFormatListNumbered, label: 'Numbered list', chevron: true },
+        { id: 'outdent', icon: MdFormatIndentDecrease, label: 'Decrease indent', chevron: false },
+        { id: 'indent', icon: MdFormatIndentIncrease, label: 'Increase indent', chevron: false },
+        { id: 'inputToolsToggleButton', icon: MdFormatClear, label: 'Input tools', chevron: false },
     ];
 
     const zoomOptions = [50, 75, 90, 100, 125, 150, 200];
@@ -108,14 +108,14 @@ export default function Toolbar(props: Props) {
     const chevronLayout = "w-4 aspect-square";
 
     return (
-        <div className="mx-auto my-1.5 rounded-full max-w-screen-2xl px-4 h-10 flex items-center gap-[1px] bg-blue-100 ">
+        <div className="mx-4 my-1.5 rounded-full px-4 h-10 flex items-center gap-[1px] bg-blue-100 ">
             {buttonGroup1.map(({ id, icon: Icon, label }) => (
                 <button
                     key={id}
                     className={buttonLayout1}
                     title={label}
                 >
-                    <Icon className="size-4 aspect-square" />
+                    <Icon />
                 </button>
             ))}
 
@@ -125,7 +125,7 @@ export default function Toolbar(props: Props) {
                     type="number"
                     min={50}
                     max={200}
-                    className={`w-full rounded px-1 py-px text-left cursor-pointer ${openZoomOption && "bg-blue-200"}`}
+                    className={`w-full min-w-8 rounded px-1 py-px text-left cursor-pointer ${openZoomOption && "bg-blue-200"}`}
                     value={zoomInput}
                     onChange={(e) => setZoomInput(e.target.value)}
                     onBlur={applyZoom}
@@ -211,7 +211,7 @@ export default function Toolbar(props: Props) {
             <div className="w-px h-5 mx-1 bg-slate-600" />
 
             {/* フォントサイズ */}
-            <div className="flex items-center text-xs">
+            <div className="items-center text-xs  hidden sm:flex">
                 <button
                     onClick={() => {
                         if (fontSize > 1) {
@@ -259,7 +259,7 @@ export default function Toolbar(props: Props) {
                 </button>
             </div>
 
-            <div className="w-px h-5 mx-1 bg-slate-600" />
+            <div className="w-px h-5 mx-1 bg-slate-600 hidden sm:flex" />
 
             {/* スタイルボタン */}
             {buttonGroup2.map(({ id, state, onClick, icon: Icon, label }) => (
@@ -267,31 +267,35 @@ export default function Toolbar(props: Props) {
                     key={id}
                     className={clsx(
                         buttonLayout2,
+                        "hidden md:flex",
                         state ? 'bg-blue-200' : 'hover:bg-blue-200',
                     )}
                     title={label}
                     onClick={onClick}
                 >
-                    <Icon className="size-4 aspect-square" />
+                    <Icon />
                 </button>
             ))}
 
-            <div className="w-px h-5 mx-1 bg-slate-600" />
+            <div className="w-px h-5 mx-1 bg-slate-600 hidden md:flex" />
 
             {buttonGroup3.map(({ id, icon: Icon, label }) => (
                 <button
                     key={id}
-                    className={buttonLayout1}
+                    className={clsx(
+                        buttonLayout1,
+                        "hidden lg:flex"
+                    )}
                     title={label}
                 >
-                    <Icon className="size-4 aspect-square" />
+                    <Icon />
                 </button>
             ))}
 
-            <div className="w-px h-5 mx-1 bg-slate-600" />
+            <div className="w-px h-5 mx-1 bg-slate-600 hidden lg:flex" />
 
             {/* 配置 */}
-            <div className="relative">
+            <div className="relative hidden xl:flex">
                 <button
                     type="button"
                     className={clsx(
@@ -337,45 +341,56 @@ export default function Toolbar(props: Props) {
             {buttonGroup4.map(({ id, icon: Icon, chevron, label }) => (
                 <button
                     key={id}
-                    className={"flex hover:bg-blue-200 rounded"}
+                    className={"hover:bg-blue-200 rounded hidden xl:flex"}
                     title={label}
                 >
-                    <div className="size-8 aspect-square flex items-center justify-center">
-                        <Icon className="size-4 aspect-square" />
+                    <div className={buttonLayout2}>
+                        <Icon />
                     </div>
                     {chevron && <ChevronDownIcon className={chevronLayout} />}
                 </button>
             ))}
-            <div className="w-px h-5 mx-1 bg-slate-600" />
+            <div className="w-px h-5 mx-1 bg-slate-600 hidden xl:flex" />
             <button
                 key="inputToolsToggleButton"
-                className={"flex hover:bg-blue-200 rounded"}
-                title="入力ツール"
+                className={"hover:bg-blue-200 rounded hidden 2xl:flex"}
+                title="Input tools"
             >
-                <div className="size-8 aspect-square flex items-center justify-center">
-                    <MdTranslate className="size-4 aspect-square" />
+                <div className={buttonLayout2}>
+                    <MdTranslate />
                 </div>
                 <ChevronDownIcon className={chevronLayout} />
+            </button>
+            <button
+                key={"more"}
+                className={clsx(
+                    buttonLayout1,
+                    "2xl:hidden",
+                )}
+                title={"More"}
+            >
+                <LuEllipsisVertical className="size-4" />
             </button>
 
             <div className="flex items-center ml-auto">
                 <button
-                    key="toolbarModeSwitcher"
+                    key="modeSwitcher"
                     className={"flex hover:bg-blue-200 rounded"}
-                    title="編集モード"
+                    title="Editing mode"
                 >
-                    <div className="size-8 aspect-square flex items-center justify-center">
-                        <PencilIcon className="size-4 aspect-square" />
+                    <div className={buttonLayout2}>
+                        <PencilIcon className="size-4" />
                     </div>
                     <ChevronDownIcon className={chevronLayout} />
                 </button>
                 <div className="w-px h-5 mx-1 bg-slate-600" />
+
                 <button
-                    key={"viewModeButton"}
+                    key={"viewModeB"}
                     className={buttonLayout1}
-                    title={"メニューを非表示"}
+                    title={"Hide the menus"}
                 >
-                    <ChevronUpIcon className="size-4 aspect-square" />
+                    <ChevronUpIcon className="size-4" />
                 </button>
             </div>
         </div>

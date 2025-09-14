@@ -127,7 +127,7 @@ export default function Ruler({ zoom, pageMargin, onChangeMargin }: Props) {
 
   return (
     <div className="flex justify-center">
-      <div className="min-w-screen flex justify-center border-b border-slate-400 rounded overflow-hidden ">
+      <div className="min-w-[calc(100vw-32px)] flex justify-center border-b border-slate-400 rounded overflow-hidden ">
         <canvas
           ref={canvasRef}
           className=''

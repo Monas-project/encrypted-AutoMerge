@@ -7,7 +7,7 @@ import EditorPage from '@/components/EditorPage';
 
 export default function Page() {
 
-  const [title, setTitle] = useState('無題のドキュメント');
+  const [title, setTitle] = useState('Untitled document');
   const [zoom, setZoom] = useState(1);
   const [pageMargin, setPageMargin] = useState({ left: 96, right: 96 });
   const [fontFamily, setFontFamily] = useState<'serif' | 'sans'>('sans');
@@ -27,20 +27,20 @@ export default function Page() {
           onZoomChange={setZoom}
         />
         <Toolbar
-            zoom={zoom}
-            setZoom={setZoom}
-            fontFamily={fontFamily}
-            setFontFamily={setFontFamily}
-            fontSize={fontSize}
-            setFontSize={setFontSize}
-            bold={bold}
-            setBold={setBold}
-            italic={italic}
-            setItalic={setItalic}
-            underline={underline}
-            setUnderline={setUnderline}
-            align={align}
-            setAlign={setAlign}
+          zoom={zoom}
+          setZoom={setZoom}
+          fontFamily={fontFamily}
+          setFontFamily={setFontFamily}
+          fontSize={fontSize}
+          setFontSize={setFontSize}
+          bold={bold}
+          setBold={setBold}
+          italic={italic}
+          setItalic={setItalic}
+          underline={underline}
+          setUnderline={setUnderline}
+          align={align}
+          setAlign={setAlign}
         />
       </div>
 
