@@ -1,0 +1,18 @@
+# Dependencies
+node_modules/
+
+# Next.js build output
+.next/
+out/
+
+# Environment variables
+.env*
+
+# Logs
+*.log
+
+# Package lock files
+package-lock.json
+
+# Generated files
+*.generated.*

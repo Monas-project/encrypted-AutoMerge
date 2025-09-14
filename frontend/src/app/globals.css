@@ -1,5 +1,5 @@
-@import url("https://fonts.googleapis.com/css2?family=Roboto&display=swap");
-@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Roboto&display=swap');
+@import 'tailwindcss';
 
 @theme {
   /* color */
@@ -14,8 +14,9 @@
   --spacing-pageH: 1056px;
 
   /* font */
-  --font-ui: Inter, system-ui, Segoe UI, Helvetica Neue, Arial, Noto Sans JP, sans-serif;
-  --font-serifdoc: "Times New Roman", Times, Noto Serif JP, serif;
+  --font-ui:
+    Inter, system-ui, Segoe UI, Helvetica Neue, Arial, Noto Sans JP, sans-serif;
+  --font-serifdoc: 'Times New Roman', Times, Noto Serif JP, serif;
 }
 
 /* scrollbar */
@@ -41,12 +42,12 @@
 }
 
 /* input type=number のスピンボタンを削除 */
-input[type="number"]::-webkit-inner-spin-button,
-input[type="number"]::-webkit-outer-spin-button {
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
 
-input[type="number"] {
+input[type='number'] {
   -moz-appearance: textfield;
 }
