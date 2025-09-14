@@ -11,12 +11,29 @@ import { v4 as uuidv4 } from 'uuid'
 export class DocumentService {
   private currentDocument: Document | null = null
   private isConnected = false
+  private documentUpdateCallbacks: ((document: Document) => void)[] = []
 
   constructor(
     private documentEncryption: DocumentEncryption,
     private syncClient: SyncClient,
     private keyStorage: KeyStorage
   ) {}
+
+  /**
+   * Register callback for document updates
+   * @param callback Callback function to receive document updates
+   */
+  onDocumentUpdate(callback: (document: Document) => void): void {
+    this.documentUpdateCallbacks.push(callback)
+  }
+
+  /**
+   * Get current document
+   * @returns Current document or null
+   */
+  getCurrentDocument(): Document | null {
+    return this.currentDocument
+  }
 
   /**
    * Create new document
@@ -144,34 +161,17 @@ export class DocumentService {
         timestamp: documentData.timestamp
       }
 
+      // Notify UI layer about the update
+      this.documentUpdateCallbacks.forEach(callback => {
+        callback(this.currentDocument!)
+      })
+
       console.log('Document updated from remote:', this.currentDocument.id)
     } catch (error) {
       console.error('Failed to handle remote update:', error)
     }
   }
 
-  /**
-   * Disconnect from current document
-   */
-  disconnectFromDocument(): void {
-    this.isConnected = false
-    this.currentDocument = null
-    console.log('Disconnected from document')
-  }
-
-  /**
-   * Get current document
-   */
-  getCurrentDocument(): Document | null {
-    return this.currentDocument
-  }
-
-  /**
-   * Check if connected to a document
-   */
-  isConnectedToDocument(): boolean {
-    return this.isConnected && this.currentDocument !== null
-  }
 
   /**
    * Update document

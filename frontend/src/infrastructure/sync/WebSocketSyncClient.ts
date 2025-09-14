@@ -24,67 +24,71 @@ export class WebSocketSyncClient implements SyncClient {
   async connect(documentId: string): Promise<void> {
     this.documentId = documentId
     
-    return new Promise((resolve, reject) => {
-      try {
-        const wsBaseUrl = process.env.NEXT_PUBLIC_WS_BASE_URL || 'ws://localhost:8080'
-        const wsEndpoint = process.env.NEXT_PUBLIC_WS_ENDPOINT || '/ws'
-        const url = `${wsBaseUrl}${wsEndpoint}?doc=${documentId}`
-        this.ws = new WebSocket(url)
+    // TODO: WebSocketエンドポイントが確定したら有効化
+    console.log('WebSocket connection disabled - endpoint not configured')
+    return Promise.resolve()
+    
+    // return new Promise((resolve, reject) => {
+    //   try {
+    //     const wsBaseUrl = process.env.NEXT_PUBLIC_WS_BASE_URL || 'ws://localhost:8080'
+    //     const wsEndpoint = process.env.NEXT_PUBLIC_WS_ENDPOINT || '/ws'
+    //     const url = `${wsBaseUrl}${wsEndpoint}?doc=${documentId}`
+    //     this.ws = new WebSocket(url)
         
-        this.ws.onopen = () => {
-          console.log(`Connected to document: ${documentId}`)
-          this.reconnectAttempts = 0
-          resolve()
-        }
-        
-        this.ws.onmessage = (event) => {
-          try {
-            const data: EncryptedDocument = JSON.parse(event.data)
-            this.updateCallbacks.forEach(callback => callback(data))
-          } catch (error) {
-            console.error('Failed to parse message:', error)
-          }
-        }
-        
-        this.ws.onclose = (event) => {
-          console.log('WebSocket closed:', event.code, event.reason)
-          
-          // 再接続ロジック
-          if (this.reconnectAttempts < this.maxReconnectAttempts) {
-            setTimeout(async () => {
-              this.reconnectAttempts++
-              try {
-                // 再接続前に最新のドキュメントデータを取得
-                const latestDocument = await this.getDocument(documentId)
-                
-                // 最新データをコールバックに通知
-                this.updateCallbacks.forEach(callback => callback(latestDocument))
-                
-                // WebSocket再接続
-                await this.connect(documentId)
-              } catch (error) {
-                console.error('Reconnection failed:', error)
-                // 再接続失敗時は次の試行を継続
-                if (this.reconnectAttempts < this.maxReconnectAttempts) {
-                  setTimeout(() => {
-                    this.reconnectAttempts++
-                    this.connect(documentId)
-                  }, this.reconnectDelay * this.reconnectAttempts)
-                }
-              }
-            }, this.reconnectDelay * this.reconnectAttempts)
-          }
-        }
-        
-        this.ws.onerror = (error) => {
-          console.error('WebSocket error:', error)
-          reject(new Error('WebSocket connection failed'))
-        }
-        
-      } catch (error) {
-        reject(error)
-      }
-    })
+    //     this.ws.onopen = () => {
+    //       console.log(`Connected to document: ${documentId}`)
+    //       this.reconnectAttempts = 0
+    //       resolve()
+    //     }
+    //     
+    //     this.ws.onmessage = (event) => {
+    //       try {
+    //         const data: EncryptedDocument = JSON.parse(event.data)
+    //         this.updateCallbacks.forEach(callback => callback(data))
+    //       } catch (error) {
+    //         console.error('Failed to parse message:', error)
+    //       }
+    //     }
+    //     
+    //     this.ws.onclose = (event) => {
+    //       console.log('WebSocket closed:', event.code, event.reason)
+    //       
+    //       // 再接続ロジック
+    //       if (this.reconnectAttempts < this.maxReconnectAttempts) {
+    //         setTimeout(async () => {
+    //           this.reconnectAttempts++
+    //           try {
+    //             // 再接続前に最新のドキュメントデータを取得
+    //             const latestDocument = await this.getDocument(documentId)
+    //             
+    //             // 最新データをコールバックに通知
+    //             this.updateCallbacks.forEach(callback => callback(latestDocument))
+    //             
+    //             // WebSocket再接続
+    //             await this.connect(documentId)
+    //           } catch (error) {
+    //             console.error('Reconnection failed:', error)
+    //             // 再接続失敗時は次の試行を継続
+    //             if (this.reconnectAttempts < this.maxReconnectAttempts) {
+    //               setTimeout(() => {
+    //                 this.reconnectAttempts++
+    //                 this.connect(documentId)
+    //               }, this.reconnectDelay * this.reconnectAttempts)
+    //             }
+    //           }
+    //         }, this.reconnectDelay * this.reconnectAttempts)
+    //       }
+    //     }
+    //     
+    //     this.ws.onerror = (error) => {
+    //       console.error('WebSocket error:', error)
+    //       reject(new Error('WebSocket connection failed'))
+    //     }
+    //     
+    //   } catch (error) {
+    //     reject(error)
+    //   }
+    // })
   }
 
   /**
