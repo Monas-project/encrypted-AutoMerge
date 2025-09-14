@@ -9,7 +9,7 @@ export interface DocumentEncryption {
    * @param key Encryption key
    * @returns Encrypted data (Base64 string)
    */
-  encrypt(data: string, key: CryptoKey): Promise<string>
+  encrypt(data: string, key: CryptoKey): Promise<string>;
 
   /**
    * Decrypt data
@@ -17,25 +17,25 @@ export interface DocumentEncryption {
    * @param key Decryption key
    * @returns Decrypted data
    */
-  decrypt(encryptedData: string, key: CryptoKey): Promise<string>
+  decrypt(encryptedData: string, key: CryptoKey): Promise<string>;
 
   /**
    * Generate new encryption key
    * @returns Generated CryptoKey
    */
-  generateKey(): Promise<CryptoKey>
+  generateKey(): Promise<CryptoKey>;
 
   /**
    * Export key as string
    * @param key Key to export
    * @returns String representation of key (Base64)
    */
-  exportKey(key: CryptoKey): Promise<string>
+  exportKey(key: CryptoKey): Promise<string>;
 
   /**
    * Import key from string
    * @param keyString String representation of key (Base64)
    * @returns Imported CryptoKey
    */
-  importKey(keyString: string): Promise<CryptoKey>
+  importKey(keyString: string): Promise<CryptoKey>;
 }

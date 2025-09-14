@@ -11,6 +11,8 @@
     "build": "next build --turbopack",
     "start": "next start",
     "lint": "eslint",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "test": "vitest",
     "test:ui": "vitest --ui"
   },
@@ -34,6 +36,7 @@
     "eslint": "^9",
     "eslint-config-next": "15.5.3",
     "jsdom": "^24.0.0",
+    "prettier": "^3.6.2",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^2.1.8"

@@ -2,16 +2,19 @@
 import { useMemo, useRef, useEffect } from 'react';
 
 type Props = {
-  zoom: number,
-  pageMargin: { left: number; right: number },
-  onChangeMargin: (v: { left: number; right: number }) => void,
+  zoom: number;
+  pageMargin: { left: number; right: number };
+  onChangeMargin: (v: { left: number; right: number }) => void;
 };
 
 export default function Ruler({ zoom, pageMargin, onChangeMargin }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const width = 816;
   const height = 16;
-  const dpr = typeof window !== 'undefined' ? Math.min(2, window.devicePixelRatio || 1) : 1
+  const dpr =
+    typeof window !== 'undefined'
+      ? Math.min(2, window.devicePixelRatio || 1)
+      : 1;
 
   // 目盛データを生成
   const ticks = useMemo(() => {
@@ -19,13 +22,18 @@ export default function Ruler({ zoom, pageMargin, onChangeMargin }: Props) {
     const major = perInch;
     const minor = perInch / 2;
     const small = perInch / 8;
-    const arr: { x: number; type: 'major' | 'minor' | 'small'; label?: string }[] = [];
+    const arr: {
+      x: number;
+      type: 'major' | 'minor' | 'small';
+      label?: string;
+    }[] = [];
     const extra = 100;
     for (let x = 0; x <= width; x += small) {
-      if (x % major === 0) arr.push({ x, type: 'major', label: String(Math.round(x / perInch)) });
+      if (x % major === 0)
+        arr.push({ x, type: 'major', label: String(Math.round(x / perInch)) });
       else if (x % minor === 0) arr.push({ x, type: 'minor' });
       else arr.push({ x, type: 'small' });
-    };
+    }
     return arr;
   }, []);
 
@@ -63,23 +71,33 @@ export default function Ruler({ zoom, pageMargin, onChangeMargin }: Props) {
         const half = textWidth / 2;
         if (xPx - half < 0 || xPx + half > canvasPx) {
           continue;
-        };
+        }
 
         ctx.fillText(text, xPx - half, 8);
-      };
-    };
+      }
+    }
     ctx.stroke();
 
     // 余白ガイド
     ctx.fillStyle = 'rgba(26,115,232,0.1)';
     ctx.fillRect(0, 0, pageMargin.left * zoom, height);
-    ctx.fillRect((width - pageMargin.right) * zoom, 0, pageMargin.right * zoom, height);
+    ctx.fillRect(
+      (width - pageMargin.right) * zoom,
+      0,
+      pageMargin.right * zoom,
+      height
+    );
 
     // ハンドル
     const handleW = 6;
     ctx.fillStyle = '#1a73e8';
     ctx.fillRect(pageMargin.left * zoom - handleW / 2, 0, handleW, height);
-    ctx.fillRect((width - pageMargin.right) * zoom - handleW / 2, 0, handleW, height);
+    ctx.fillRect(
+      (width - pageMargin.right) * zoom - handleW / 2,
+      0,
+      handleW,
+      height
+    );
   }, [zoom, pageMargin, ticks, dpr]);
 
   // ドラッグで余白を調整
@@ -102,16 +120,16 @@ export default function Ruler({ zoom, pageMargin, onChangeMargin }: Props) {
       const rect = el.getBoundingClientRect();
       const x = (e.clientX - rect.left) / zoom;
       if (dragging === 'left') {
-        const val = Math.max(24, Math.min(192, x))
-        onChangeMargin({ ...pageMargin, left: Math.round(val) })
+        const val = Math.max(24, Math.min(192, x));
+        onChangeMargin({ ...pageMargin, left: Math.round(val) });
       } else {
-        const val = Math.max(24, Math.min(192, width - x))
-        onChangeMargin({ ...pageMargin, right: Math.round(val) })
-      };
+        const val = Math.max(24, Math.min(192, width - x));
+        onChangeMargin({ ...pageMargin, right: Math.round(val) });
+      }
     };
 
     const handleUp = () => {
-      dragging = null
+      dragging = null;
     };
 
     el.addEventListener('mousedown', handleDown);
@@ -123,17 +141,13 @@ export default function Ruler({ zoom, pageMargin, onChangeMargin }: Props) {
       window.removeEventListener('mousemove', handleMove);
       window.removeEventListener('mouseup', handleUp);
     };
-  }, [zoom, pageMargin, onChangeMargin])
+  }, [zoom, pageMargin, onChangeMargin]);
 
   return (
     <div className="flex justify-center">
       <div className="min-w-screen flex justify-center border-b border-slate-400 rounded overflow-hidden ">
-        <canvas
-          ref={canvasRef}
-          className=''
-          style={{ display: 'block' }}
-        />
+        <canvas ref={canvasRef} className="" style={{ display: 'block' }} />
       </div>
     </div>
-  )
-};
+  );
+}
