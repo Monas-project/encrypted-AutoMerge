@@ -1,13 +1,9 @@
+import { EncryptedDocument } from '../../application/types/Document'
+
 /**
  * Real-time sync client interface
  * Abstracts communication using WebSocket, etc.
  */
-export interface EncryptedDocument {
-  id: string
-  content: string
-  timestamp: number
-  latest: boolean
-}
 
 export interface SyncClient {
   /**
@@ -18,10 +14,16 @@ export interface SyncClient {
 
   /**
    * Send encrypted data to server
-   * @param encryptedData Encrypted data
-   * @param timestamp Timestamp
+   * @param encryptedDocument Encrypted document data
    */
-  sendUpdate(encryptedData: string, timestamp: number): Promise<void>
+  sendUpdate(encryptedDocument: EncryptedDocument): Promise<void>
+
+  /**
+   * Get latest document data from server
+   * @param documentId Document ID
+   * @returns Latest encrypted document data
+   */
+  getDocument(documentId: string): Promise<EncryptedDocument>
 
   /**
    * Receive document updates
