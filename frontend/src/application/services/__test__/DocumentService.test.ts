@@ -16,12 +16,8 @@ const mockDocumentEncryption: DocumentEncryption = {
 
 const mockSyncClient: SyncClient = {
   connect: vi.fn(),
-  disconnect: vi.fn(),
   sendUpdate: vi.fn(),
   onUpdate: vi.fn(),
-  onConnect: vi.fn(),
-  onDisconnect: vi.fn(),
-  onError: vi.fn()
 }
 
 const mockKeyStorage: KeyStorage = {

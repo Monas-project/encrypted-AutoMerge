@@ -5,25 +5,23 @@ export interface Document {
   id: string
   text: string
   timestamp: number
-  cursorLine?: number
 }
 
 /**
  * Data to be encrypted (text and timestamp only)
  */
 export interface DocumentData {
-  // cursorLine may not need to be included??
   text: string
   timestamp: number
 }
 
 /**
- * Encrypted data
- * Data to be sent to server
+ * Encrypted data structure for server communication
  */
 export interface EncryptedDocument {
-  id: string
-  content: string  // Encrypted DocumentData
-  timestamp: number  // Not encrypted (for LWW determination)
-  cursorLine?: number  // Not encrypted (for real-time display)
+  doc_id: string
+  ts_cts: string[]  // Encrypted timestamp chunks (16 chunks)
+  id_cts: string[]  // Encrypted ID chunks (16 chunks)
+  content_id: string  // Content ID (u64 as decimal string)
+  content_cts: string[]  // Encrypted content chunks (2*MAX_CONTENT_LEN chunks)
 }

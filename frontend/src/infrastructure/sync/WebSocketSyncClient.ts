@@ -1,4 +1,5 @@
-import { SyncClient, EncryptedDocument } from './SyncClient'
+import { SyncClient } from './SyncClient'
+import { EncryptedDocument } from '../../application/types/Document'
 
 /**
  * WebSocket sync client implementation
@@ -9,14 +10,11 @@ export class WebSocketSyncClient implements SyncClient {
   private documentId: string | null = null
   private updateCallbacks: ((data: EncryptedDocument) => void)[] = []
   
-  // TODO: 設定可能なエンドポイント（環境変数や設定ファイルから取得）
-  private readonly wsUrl: string
   private reconnectAttempts = 0
   private readonly maxReconnectAttempts = 5
   private readonly reconnectDelay = 1000 // 1秒
 
-  constructor(wsUrl: string = 'ws://localhost:8080/ws') {
-    this.wsUrl = wsUrl
+  constructor() {
   }
 
   /**
@@ -28,11 +26,9 @@ export class WebSocketSyncClient implements SyncClient {
     
     return new Promise((resolve, reject) => {
       try {
-        // TODO: 認証トークンが必要な場合の実装
-        // const token = this.getAuthToken()
-        // const url = `${this.wsUrl}?doc=${documentId}&token=${token}`
-        
-        const url = `${this.wsUrl}?doc=${documentId}`
+        const wsBaseUrl = process.env.NEXT_PUBLIC_WS_BASE_URL || 'ws://localhost:8080'
+        const wsEndpoint = process.env.NEXT_PUBLIC_WS_ENDPOINT || '/ws'
+        const url = `${wsBaseUrl}${wsEndpoint}?doc=${documentId}`
         this.ws = new WebSocket(url)
         
         this.ws.onopen = () => {
@@ -47,18 +43,35 @@ export class WebSocketSyncClient implements SyncClient {
             this.updateCallbacks.forEach(callback => callback(data))
           } catch (error) {
             console.error('Failed to parse message:', error)
-            // エラーは connect() や sendUpdate() の Promise で処理
           }
         }
         
         this.ws.onclose = (event) => {
           console.log('WebSocket closed:', event.code, event.reason)
           
-          // TODO: 再接続ロジック（必要に応じて）
+          // 再接続ロジック
           if (this.reconnectAttempts < this.maxReconnectAttempts) {
-            setTimeout(() => {
+            setTimeout(async () => {
               this.reconnectAttempts++
-              this.connect(documentId)
+              try {
+                // 再接続前に最新のドキュメントデータを取得
+                const latestDocument = await this.getDocument(documentId)
+                
+                // 最新データをコールバックに通知
+                this.updateCallbacks.forEach(callback => callback(latestDocument))
+                
+                // WebSocket再接続
+                await this.connect(documentId)
+              } catch (error) {
+                console.error('Reconnection failed:', error)
+                // 再接続失敗時は次の試行を継続
+                if (this.reconnectAttempts < this.maxReconnectAttempts) {
+                  setTimeout(() => {
+                    this.reconnectAttempts++
+                    this.connect(documentId)
+                  }, this.reconnectDelay * this.reconnectAttempts)
+                }
+              }
             }, this.reconnectDelay * this.reconnectAttempts)
           }
         }
@@ -74,13 +87,20 @@ export class WebSocketSyncClient implements SyncClient {
     })
   }
 
+  /**
+   * Receive document updates
+   * @param callback Callback to receive update data
+   */
+  onUpdate(callback: (data: EncryptedDocument) => void): void {
+    this.updateCallbacks.push(callback)
+  }
+
 
   /**
    * Send encrypted data to server
-   * @param encryptedData Encrypted data
-   * @param timestamp Timestamp
+   * @param encryptedDocument Encrypted document data
    */
-  async sendUpdate(encryptedData: string, timestamp: number): Promise<void> {
+  async sendUpdate(encryptedDocument: EncryptedDocument): Promise<void> {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       throw new Error('WebSocket is not connected')
     }
@@ -89,24 +109,34 @@ export class WebSocketSyncClient implements SyncClient {
       throw new Error('No document connected')
     }
 
-    const message = {
-      id: this.documentId,
-      content: encryptedData,
-      timestamp: timestamp
-    }
-
     try {
-      this.ws.send(JSON.stringify(message))
+      this.ws.send(JSON.stringify(encryptedDocument))
     } catch (error) {
       throw new Error(`Failed to send update: ${error}`)
     }
   }
 
   /**
-   * Receive document updates
-   * @param callback Callback to receive update data
+   * Get latest document data from server
+   * @param documentId Document ID
+   * @returns Latest encrypted document data
    */
-  onUpdate(callback: (data: EncryptedDocument) => void): void {
-    this.updateCallbacks.push(callback)
+  async getDocument(documentId: string): Promise<EncryptedDocument> {
+    try {
+      const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'
+      const documentsEndpoint = process.env.NEXT_PUBLIC_API_DOCUMENTS_ENDPOINT || '/api/documents'
+      const url = `${apiBaseUrl}${documentsEndpoint}/${documentId}`
+      
+      const response = await fetch(url)
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch document: ${response.status} ${response.statusText}`)
+      }
+      
+      const data: EncryptedDocument = await response.json()
+      return data
+    } catch (error) {
+      throw new Error(`Failed to get document: ${error}`)
+    }
   }
 }
