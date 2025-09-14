@@ -1,4 +1,4 @@
-import { DocumentEncryption } from './DocumentEncryption'
+import { DocumentEncryption } from './DocumentEncryption';
 
 // 削除予定
 
@@ -16,7 +16,7 @@ export class MockDocumentEncryption implements DocumentEncryption {
    */
   async encrypt(data: string, key: CryptoKey): Promise<string> {
     // In mock implementation, just base64 encode the data
-    return btoa(unescape(encodeURIComponent(data)))
+    return btoa(unescape(encodeURIComponent(data)));
   }
 
   /**
@@ -27,7 +27,7 @@ export class MockDocumentEncryption implements DocumentEncryption {
    */
   async decrypt(encryptedData: string, key: CryptoKey): Promise<string> {
     // In mock implementation, just base64 decode the data
-    return decodeURIComponent(escape(atob(encryptedData)))
+    return decodeURIComponent(escape(atob(encryptedData)));
   }
 
   /**
@@ -40,10 +40,10 @@ export class MockDocumentEncryption implements DocumentEncryption {
       type: 'secret' as KeyType,
       extractable: true,
       algorithm: { name: 'AES-GCM' },
-      usages: ['encrypt', 'decrypt'] as KeyUsage[]
-    } as CryptoKey
-    
-    return mockKey
+      usages: ['encrypt', 'decrypt'] as KeyUsage[],
+    } as CryptoKey;
+
+    return mockKey;
   }
 
   /**
@@ -53,7 +53,7 @@ export class MockDocumentEncryption implements DocumentEncryption {
    */
   async exportKey(key: CryptoKey): Promise<string> {
     // Return a mock key string
-    return 'mock-key-' + Math.random().toString(36).substr(2, 9)
+    return 'mock-key-' + Math.random().toString(36).substr(2, 9);
   }
 
   /**
@@ -63,6 +63,6 @@ export class MockDocumentEncryption implements DocumentEncryption {
    */
   async importKey(keyString: string): Promise<CryptoKey> {
     // Return the same mock key structure
-    return this.generateKey()
+    return this.generateKey();
   }
 }

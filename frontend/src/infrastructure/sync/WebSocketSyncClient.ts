@@ -1,46 +1,45 @@
-import { SyncClient } from './SyncClient'
-import { EncryptedDocument } from '../../application/types/Document'
+import { SyncClient } from './SyncClient';
+import { EncryptedDocument } from '../../application/types/Document';
 
 /**
  * WebSocket sync client implementation
  * Handles real-time synchronization with encrypted documents
  */
 export class WebSocketSyncClient implements SyncClient {
-  private ws: WebSocket | null = null
-  private documentId: string | null = null
-  private updateCallbacks: ((data: EncryptedDocument) => void)[] = []
-  
-  private reconnectAttempts = 0
-  private readonly maxReconnectAttempts = 5
-  private readonly reconnectDelay = 1000 // 1秒
+  private ws: WebSocket | null = null;
+  private documentId: string | null = null;
+  private updateCallbacks: ((data: EncryptedDocument) => void)[] = [];
 
-  constructor() {
-  }
+  private reconnectAttempts = 0;
+  private readonly maxReconnectAttempts = 5;
+  private readonly reconnectDelay = 1000; // 1秒
+
+  constructor() {}
 
   /**
    * Connect to specified document
    * @param documentId Document ID
    */
   async connect(documentId: string): Promise<void> {
-    this.documentId = documentId
-    
+    this.documentId = documentId;
+
     // TODO: WebSocketエンドポイントが確定したら有効化
-    console.log('WebSocket connection disabled - endpoint not configured')
-    return Promise.resolve()
-    
+    console.log('WebSocket connection disabled - endpoint not configured');
+    return Promise.resolve();
+
     // return new Promise((resolve, reject) => {
     //   try {
     //     const wsBaseUrl = process.env.NEXT_PUBLIC_WS_BASE_URL || 'ws://localhost:8080'
     //     const wsEndpoint = process.env.NEXT_PUBLIC_WS_ENDPOINT || '/ws'
     //     const url = `${wsBaseUrl}${wsEndpoint}?doc=${documentId}`
     //     this.ws = new WebSocket(url)
-        
+
     //     this.ws.onopen = () => {
     //       console.log(`Connected to document: ${documentId}`)
     //       this.reconnectAttempts = 0
     //       resolve()
     //     }
-    //     
+    //
     //     this.ws.onmessage = (event) => {
     //       try {
     //         const data: EncryptedDocument = JSON.parse(event.data)
@@ -49,10 +48,10 @@ export class WebSocketSyncClient implements SyncClient {
     //         console.error('Failed to parse message:', error)
     //       }
     //     }
-    //     
+    //
     //     this.ws.onclose = (event) => {
     //       console.log('WebSocket closed:', event.code, event.reason)
-    //       
+    //
     //       // 再接続ロジック
     //       if (this.reconnectAttempts < this.maxReconnectAttempts) {
     //         setTimeout(async () => {
@@ -60,10 +59,10 @@ export class WebSocketSyncClient implements SyncClient {
     //           try {
     //             // 再接続前に最新のドキュメントデータを取得
     //             const latestDocument = await this.getDocument(documentId)
-    //             
+    //
     //             // 最新データをコールバックに通知
     //             this.updateCallbacks.forEach(callback => callback(latestDocument))
-    //             
+    //
     //             // WebSocket再接続
     //             await this.connect(documentId)
     //           } catch (error) {
@@ -79,12 +78,12 @@ export class WebSocketSyncClient implements SyncClient {
     //         }, this.reconnectDelay * this.reconnectAttempts)
     //       }
     //     }
-    //     
+    //
     //     this.ws.onerror = (error) => {
     //       console.error('WebSocket error:', error)
     //       reject(new Error('WebSocket connection failed'))
     //     }
-    //     
+    //
     //   } catch (error) {
     //     reject(error)
     //   }
@@ -96,9 +95,8 @@ export class WebSocketSyncClient implements SyncClient {
    * @param callback Callback to receive update data
    */
   onUpdate(callback: (data: EncryptedDocument) => void): void {
-    this.updateCallbacks.push(callback)
+    this.updateCallbacks.push(callback);
   }
-
 
   /**
    * Send encrypted data to server
@@ -106,17 +104,17 @@ export class WebSocketSyncClient implements SyncClient {
    */
   async sendUpdate(encryptedDocument: EncryptedDocument): Promise<void> {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      throw new Error('WebSocket is not connected')
+      throw new Error('WebSocket is not connected');
     }
-    
+
     if (!this.documentId) {
-      throw new Error('No document connected')
+      throw new Error('No document connected');
     }
 
     try {
-      this.ws.send(JSON.stringify(encryptedDocument))
+      this.ws.send(JSON.stringify(encryptedDocument));
     } catch (error) {
-      throw new Error(`Failed to send update: ${error}`)
+      throw new Error(`Failed to send update: ${error}`);
     }
   }
 
@@ -127,20 +125,24 @@ export class WebSocketSyncClient implements SyncClient {
    */
   async getDocument(documentId: string): Promise<EncryptedDocument> {
     try {
-      const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'
-      const documentsEndpoint = process.env.NEXT_PUBLIC_API_DOCUMENTS_ENDPOINT || '/api/documents'
-      const url = `${apiBaseUrl}${documentsEndpoint}/${documentId}`
-      
-      const response = await fetch(url)
-      
+      const apiBaseUrl =
+        process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+      const documentsEndpoint =
+        process.env.NEXT_PUBLIC_API_DOCUMENTS_ENDPOINT || '/api/documents';
+      const url = `${apiBaseUrl}${documentsEndpoint}/${documentId}`;
+
+      const response = await fetch(url);
+
       if (!response.ok) {
-        throw new Error(`Failed to fetch document: ${response.status} ${response.statusText}`)
+        throw new Error(
+          `Failed to fetch document: ${response.status} ${response.statusText}`
+        );
       }
-      
-      const data: EncryptedDocument = await response.json()
-      return data
+
+      const data: EncryptedDocument = await response.json();
+      return data;
     } catch (error) {
-      throw new Error(`Failed to get document: ${error}`)
+      throw new Error(`Failed to get document: ${error}`);
     }
   }
 }

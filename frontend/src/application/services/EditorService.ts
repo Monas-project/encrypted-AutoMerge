@@ -3,16 +3,16 @@
  * Manages editor integration
  */
 export class EditorService {
-  private textChangeCallbacks: ((text: string) => void)[] = []
-  private debounceTimer: NodeJS.Timeout | null = null
-  private readonly DEBOUNCE_DELAY = 500 // 500ms
+  private textChangeCallbacks: ((text: string) => void)[] = [];
+  private debounceTimer: NodeJS.Timeout | null = null;
+  private readonly DEBOUNCE_DELAY = 500; // 500ms
 
   /**
    * Set text change event listener
    * @param callback Callback for text changes
    */
   onTextChange(callback: (text: string) => void): void {
-    this.textChangeCallbacks.push(callback)
+    this.textChangeCallbacks.push(callback);
   }
 
   /**
@@ -23,14 +23,13 @@ export class EditorService {
   emitTextChange(text: string): void {
     // Clear existing timer
     if (this.debounceTimer) {
-      clearTimeout(this.debounceTimer)
+      clearTimeout(this.debounceTimer);
     }
 
     // Set new timer
     this.debounceTimer = setTimeout(() => {
-      this.textChangeCallbacks.forEach(callback => callback(text))
-      this.debounceTimer = null
-    }, this.DEBOUNCE_DELAY)
+      this.textChangeCallbacks.forEach(callback => callback(text));
+      this.debounceTimer = null;
+    }, this.DEBOUNCE_DELAY);
   }
-
 }
