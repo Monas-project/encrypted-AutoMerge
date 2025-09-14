@@ -19,13 +19,16 @@ help:
 	@echo ""
 	@echo "Env vars: DOCKER_CLI ($(DOCKER_CLI)), TARGET_PLATFORM ($(TARGET_PLATFORM))"
 	@echo "          AWS_REGION ($${AWS_REGION:-ap-northeast-1}), IMAGE_REPO_URL, IMAGE_TAG ($${IMAGE_TAG:-latest})"
-	@echo "          TF_KEY_NAME (EC2 key pair), TF_ARCH ($${TF_ARCH:-x86_64}), TF_INSTANCE_TYPE ($${TF_INSTANCE_TYPE:-t3.micro})"
+	@echo "          TF_KEY_NAME (EC2 key pair), TF_ARCH ($${TF_ARCH:-x86_64}), TF_INSTANCE_TYPE ($${TF_INSTANCE_TYPE:-t3.medium})"
+	@echo "          TF_ROOT_VOL_SIZE ($${TF_ROOT_VOL_SIZE:-30}), TF_ROOT_VOL_TYPE ($${TF_ROOT_VOL_TYPE:-gp3})"
+	@echo "          TF_ZONE_NAME (e.g.bbb.xyz), TF_API_SUBDOMAIN (e.g.aaa)"
+	@echo "          AMPLIFY_APP_ID (required for frontend-deploy), AMPLIFY_BRANCH_NAME ($${AMPLIFY_BRANCH_NAME:-main})"
 
 wasm:
 	@bash scripts/build_wasm.sh
 
 frontend-deploy: wasm
-	@bash scripts/amplify_deploy_frontend.sh
+	@AMPLIFY_APP_ID=$${AMPLIFY_APP_ID:?set AMPLIFY_APP_ID} AMPLIFY_BRANCH_NAME=$${AMPLIFY_BRANCH_NAME:-main} bash scripts/amplify_deploy_frontend.sh
 
 ecr-push:
 	TARGET_PLATFORM=$(TARGET_PLATFORM) bash scripts/ecr_build_push.sh
@@ -38,14 +41,22 @@ ecr-push-multi:
 
 infra-apply:
 	@ARCH=$${TF_ARCH:-x86_64}; \
-	ITYPE=$${TF_INSTANCE_TYPE:-t3.micro}; \
+	ITYPE=$${TF_INSTANCE_TYPE:-t3.medium}; \
+	RVOL=$${TF_ROOT_VOL_SIZE:-30}; \
+	RVTYPE=$${TF_ROOT_VOL_TYPE:-gp3}; \
+	EXTRA_VARS=""; \
+	if [ -n "$$TF_ZONE_NAME" ]; then EXTRA_VARS="$$EXTRA_VARS -var=route53_zone_name=$$TF_ZONE_NAME"; fi; \
+	if [ -n "$$TF_API_SUBDOMAIN" ]; then EXTRA_VARS="$$EXTRA_VARS -var=api_subdomain=$$TF_API_SUBDOMAIN"; fi; \
 	cd infra/terraform && terraform init && terraform apply -auto-approve \
 		-var="aws_region=$${AWS_REGION:-ap-northeast-1}" \
 		-var="key_name=$${TF_KEY_NAME:?set TF_KEY_NAME (EC2 key pair name)}" \
 		-var="image_repo_url=$${IMAGE_REPO_URL:?set IMAGE_REPO_URL (from ecr-push output)}" \
 		-var="image_tag=$${IMAGE_TAG:-latest}" \
+		$$EXTRA_VARS \
 		-var="arch=$$ARCH" \
-		-var="instance_type=$$ITYPE"
+		-var="instance_type=$$ITYPE" \
+		-var="root_volume_size=$$RVOL" \
+		-var="root_volume_type=$$RVTYPE"
 
 deploy-all: ecr-push infra-apply frontend-deploy
 

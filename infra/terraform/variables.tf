@@ -18,7 +18,7 @@ variable "key_name" {
 variable "instance_type" {
   type        = string
   description = "EC2 instance type"
-  default     = "t3.micro"
+  default     = "t3.medium"
 }
 
 variable "arch" {
@@ -48,5 +48,27 @@ variable "image_tag" {
   type        = string
   description = "Docker image tag"
   default     = "latest"
+}
+
+variable "root_volume_size" {
+  type        = number
+  description = "Root EBS volume size in GiB"
+  default     = 30
+}
+
+variable "root_volume_type" {
+  type        = string
+  description = "Root EBS volume type (gp3, gp2, etc.)"
+  default     = "gp3"
+}
+
+variable "route53_zone_name" {
+  type        = string
+  description = "Existing Route53 public hosted zone name (e.g.bbb.xyz)"
+}
+
+variable "api_subdomain" {
+  type        = string
+  description = "Subdomain to use for API (e.g.aaa)"
 }
 
