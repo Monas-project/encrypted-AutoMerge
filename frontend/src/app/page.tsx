@@ -15,7 +15,7 @@ import {
   setupDocumentUpdateListener,
 } from './actions';
 
-const DEFAULT_TITLE = '無題のドキュメント';
+const DEFAULT_TITLE = 'Untitled document';
 
 export default function Page() {
   const [title, setTitle] = useState(DEFAULT_TITLE);
@@ -193,30 +193,30 @@ export default function Page() {
         </pre>
       )}
       <div className="h-screen flex flex-col bg-slate-100 text-slate-800">
-        <div className="flex-shrink-0">
-          <TopBar
-            title={title}
-            onTitleChange={setTitle}
-            zoom={zoom}
-            onZoomChange={setZoom}
-          />
-          <Toolbar
-            zoom={zoom}
-            setZoom={setZoom}
-            fontFamily={fontFamily}
-            setFontFamily={setFontFamily}
-            fontSize={fontSize}
-            setFontSize={setFontSize}
-            bold={bold}
-            setBold={setBold}
-            italic={italic}
-            setItalic={setItalic}
-            underline={underline}
-            setUnderline={setUnderline}
-            align={align}
-            setAlign={setAlign}
-          />
-        </div>
+      <div className='flex-shrink-0'>
+        <TopBar
+          title={title}
+          onTitleChange={setTitle}
+          zoom={zoom}
+          onZoomChange={setZoom}
+        />
+        <Toolbar
+          zoom={zoom}
+          setZoom={setZoom}
+          fontFamily={fontFamily}
+          setFontFamily={setFontFamily}
+          fontSize={fontSize}
+          setFontSize={setFontSize}
+          bold={bold}
+          setBold={setBold}
+          italic={italic}
+          setItalic={setItalic}
+          underline={underline}
+          setUnderline={setUnderline}
+          align={align}
+          setAlign={setAlign}
+        />
+      </div>
 
         <div className="flex-1 overflow-y-auto">
           <div className="w-full flex justify-center">
