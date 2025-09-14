@@ -6,21 +6,6 @@ import { WebSocketSyncClient } from '@/infrastructure/sync/WebSocketSyncClient'
 import { Document } from '@/application/types/Document'
 
 // ============================================================================
-// Actions - High-level operations that wrap application services
-// ============================================================================
-
-// Service instances (singleton pattern)
-let documentService: DocumentService | null = null
-let editorService: EditorService | null = null
-
-// Helper function to check if services are initialized
-const ensureServicesInitialized = (): void => {
-  if (!documentService || !editorService) {
-    throw new Error('Services not initialized')
-  }
-}
-
-// ============================================================================
 // Service Management
 // ============================================================================
 
@@ -97,4 +82,14 @@ export const setupDocumentUpdateListener = (onDocumentUpdate: (document: Documen
 export const getCurrentDocument = (): Document | null => {
   ensureServicesInitialized()
   return documentService!.getCurrentDocument()
+}
+// Service instances (singleton pattern)
+let documentService: DocumentService | null = null
+let editorService: EditorService | null = null
+
+// Helper function to check if services are initialized
+const ensureServicesInitialized = (): void => {
+  if (!documentService || !editorService) {
+    throw new Error('Services not initialized')
+  }
 }
