@@ -28,10 +28,11 @@ export class WebSocketSyncClient implements SyncClient {
         const wsBaseUrl = process.env.NEXT_PUBLIC_WS_BASE_URL || 'ws://localhost:3001'
         const wsEndpoint = process.env.NEXT_PUBLIC_WS_ENDPOINT || '/ws'
         const url = `${wsBaseUrl}${wsEndpoint}?doc_id=${documentId}`
+        console.log('[ws] connecting', { url, documentId })
         this.ws = new WebSocket(url)
         
         this.ws.onopen = () => {
-          console.log(`Connected to document: ${documentId}`)
+          console.log('[ws] open', { documentId })
           this.reconnectAttempts = 0
           resolve()
         }
@@ -39,14 +40,15 @@ export class WebSocketSyncClient implements SyncClient {
         this.ws.onmessage = (event) => {
           try {
             const data: WsServerSelected = JSON.parse(event.data)
+            console.log('[ws] message', { documentId: this.documentId, len: data.selected_id_cts?.length })
             this.updateCallbacks.forEach(callback => callback(data))
           } catch (error) {
-            console.error('Failed to parse message:', error)
+            console.error('[ws] parse error', error)
           }
         }
         
         this.ws.onclose = (event) => {
-          console.log('WebSocket closed:', event.code, event.reason)
+          console.log('[ws] close', event.code, event.reason)
           
           // 再接続ロジック
           if (this.reconnectAttempts < this.maxReconnectAttempts) {
@@ -76,7 +78,7 @@ export class WebSocketSyncClient implements SyncClient {
         }
         
         this.ws.onerror = (error) => {
-          console.error('WebSocket error:', error)
+          console.error('[ws] error', error)
           reject(new Error('WebSocket connection failed'))
         }
         

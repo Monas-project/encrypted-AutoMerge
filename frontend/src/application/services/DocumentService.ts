@@ -101,11 +101,14 @@ export class DocumentService {
 
     try {
       // Connect to WebSocket
+      console.log('[doc] connect start', { docId: document.id })
       await this.syncClient.connect(document.id);
       this.isConnected = true;
+      console.log('[doc] connect ok', { docId: document.id })
 
       // Set up remote update listener
       this.syncClient.onUpdate(async (selected: WsServerSelected) => {
+        console.log('[doc] onUpdate selected_id_cts', { len: selected.selected_id_cts?.length })
         await this.handleRemoteUpdate(selected)
       })
 
@@ -204,6 +207,7 @@ export class DocumentService {
         content_id: randId.toString(10) as any,
         content_cts: content_cts as unknown as string[],
       }
+      console.log('[doc] sendUpdate', { docId: document.id, ts_len: outbound.ts_cts.length, id_len: outbound.id_cts.length, content_len: outbound.content_cts.length })
       await this.syncClient.sendUpdate(outbound)
     }
   }
@@ -266,6 +270,20 @@ export class DocumentService {
     const existing = await this.keyStorage.loadKey(documentId)
     if (existing) return existing
     // generate via worker
+    // Pre-post cached compressed server key if available
+    try {
+      const paramKey = 'V0_11_PARAM_MESSAGE_4_CARRY_2_KS_PBS_GAUSSIAN_2M64'
+      const skStore = new ServerKeyStorage()
+      const csk_b64_cached = await skStore.loadCompressedServerKey(paramKey)
+      if (csk_b64_cached) {
+        fetch((process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001') + '/keys/set_server_key', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ server_key_b64: csk_b64_cached }),
+        }).catch(() => {})
+      }
+    } catch {}
+
     const workerUrl = new URL('../../worker/ckgen-worker.js', import.meta.url)
     const w = new Worker(workerUrl, { type: 'module' })
     const tfheModuleUrl = process.env.NEXT_PUBLIC_TFHE_JS_URL || '/tfhe/tfhe.js'
