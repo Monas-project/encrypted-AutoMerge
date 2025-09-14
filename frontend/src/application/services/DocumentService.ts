@@ -9,6 +9,9 @@ import { v4 as uuidv4 } from 'uuid'
  * Manages document creation, loading, updating, and sharing
  */
 export class DocumentService {
+  private currentDocument: Document | null = null
+  private isConnected = false
+
   constructor(
     private documentEncryption: DocumentEncryption,
     private syncClient: SyncClient,
@@ -34,9 +37,11 @@ export class DocumentService {
     const document: Document = {
       id: documentId,
       text: '',
-      timestamp: Date.now(),
-      cursorLine: 0
+      timestamp: Date.now()
     }
+    
+    // 5. Store as current document
+    this.currentDocument = document
     
     return document
   }
@@ -56,48 +61,132 @@ export class DocumentService {
     // 2. Import key
     const key = await this.documentEncryption.importKey(urlData.key)
     
-    // 3. Get encrypted data from server (temporary implementation)
-    // TODO: Need to implement fetching from SyncClient
-    const encryptedDocument: EncryptedDocument = {
-      id: urlData.documentId,
-      content: '', // Temporary value
-      timestamp: Date.now(),
-      cursorLine: 0
-    }
+    // 3. Get encrypted data from server
+    const encryptedDocument = await this.syncClient.getDocument(urlData.documentId)
     
-    // 4. Decrypt encrypted data
+    // 4. Decrypt encrypted data (temporary implementation)
+    const contentData = encryptedDocument.content_cts[0] // 配列の最初の要素を使用
     const documentData: DocumentData = JSON.parse(
-      await this.documentEncryption.decrypt(encryptedDocument.content, key)
+      await this.documentEncryption.decrypt(contentData, key)
     )
     
     // 5. Create document object
     const document: Document = {
-      id: encryptedDocument.id,
+      id: encryptedDocument.doc_id,
       text: documentData.text,
-      timestamp: documentData.timestamp,
-      cursorLine: encryptedDocument.cursorLine
+      timestamp: documentData.timestamp
     }
     
+    // 6. Store as current document
+    this.currentDocument = document
+    
     return document
+  }
+
+  /**
+   * Connect to document for real-time sync
+   * @param document Document to connect to
+   */
+  async connectToDocument(document: Document): Promise<void> {
+    if (!this.currentDocument || this.currentDocument.id !== document.id) {
+      this.currentDocument = document
+    }
+
+    try {
+      // Connect to WebSocket
+      await this.syncClient.connect(document.id)
+      this.isConnected = true
+
+      // Set up remote update listener
+      this.syncClient.onUpdate(async (encryptedDocument) => {
+        await this.handleRemoteUpdate(encryptedDocument)
+      })
+
+      console.log(`Connected to document: ${document.id}`)
+    } catch (error) {
+      console.error('Failed to connect to document:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Handle remote document updates
+   * @param encryptedDocument Encrypted document from server
+   */
+  private async handleRemoteUpdate(encryptedDocument: EncryptedDocument): Promise<void> {
+    if (!this.currentDocument) {
+      console.warn('Received remote update but no current document')
+      return
+    }
+
+    try {
+      // Get encryption key
+      const keyString = await this.keyStorage.loadKey(encryptedDocument.doc_id)
+      if (!keyString) {
+        console.error('Key not found for remote update')
+        return
+      }
+      const key = await this.documentEncryption.importKey(keyString)
+
+      // TODO: WASM暗号化サービスで新しい構造から復号化
+      // 現在は一時的にレガシー構造として処理
+      
+      // 新しい構造からコンテンツを復号化（WASMサービス実装後に置き換え）
+      const contentData = encryptedDocument.content_cts[0] // 配列の最初の要素を使用
+      const documentData: DocumentData = JSON.parse(
+        await this.documentEncryption.decrypt(contentData, key)
+      )
+
+      // Update current document
+      this.currentDocument = {
+        ...this.currentDocument,
+        text: documentData.text,
+        timestamp: documentData.timestamp
+      }
+
+      console.log('Document updated from remote:', this.currentDocument.id)
+    } catch (error) {
+      console.error('Failed to handle remote update:', error)
+    }
+  }
+
+  /**
+   * Disconnect from current document
+   */
+  disconnectFromDocument(): void {
+    this.isConnected = false
+    this.currentDocument = null
+    console.log('Disconnected from document')
+  }
+
+  /**
+   * Get current document
+   */
+  getCurrentDocument(): Document | null {
+    return this.currentDocument
+  }
+
+  /**
+   * Check if connected to a document
+   */
+  isConnectedToDocument(): boolean {
+    return this.isConnected && this.currentDocument !== null
   }
 
   /**
    * Update document
    * @param document Document to update
    * @param newText New text
-   * @param cursorLine Cursor position
    */
   async updateDocument(
     document: Document, 
-    newText: string, 
-    cursorLine?: number
+    newText: string
   ): Promise<void> {
     // 1. Update document
     const updatedDocument: Document = {
       ...document,
       text: newText,
-      timestamp: Date.now(),
-      cursorLine: cursorLine ?? document.cursorLine
+      timestamp: Date.now()
     }
     
     // 2. Get key
@@ -118,8 +207,25 @@ export class DocumentService {
       key
     )
     
-    // 4. Send to server
-    await this.syncClient.sendUpdate(encryptedContent, updatedDocument.timestamp)
+    // 4. Update current document
+    this.currentDocument = updatedDocument
+    
+    // 5. Send to server (if connected)
+    if (this.isConnected) {
+      // TODO: WASM暗号化サービスで新しい構造に変換
+      // 現在は一時的にレガシー構造を使用
+      
+      // 新しい構造に変換（WASMサービス実装後に置き換え）
+      const encryptedDocument: EncryptedDocument = {
+        doc_id: document.id,
+        ts_cts: [], // WASMで生成
+        id_cts: [], // WASMで生成
+        content_id: updatedDocument.timestamp.toString(),
+        content_cts: [encryptedContent] // 暗号化済みデータを配列として送信
+      }
+      
+      await this.syncClient.sendUpdate(encryptedDocument)
+    }
   }
 
   /**
