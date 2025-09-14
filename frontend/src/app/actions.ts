@@ -1,6 +1,5 @@
 import { DocumentService } from '@/application/services/DocumentService';
 import { EditorService } from '@/application/services/EditorService';
-import { MockDocumentEncryption } from '@/infrastructure/crypto/MockDocumentEncryption';
 import { IndexedDBKeyStorage } from '@/infrastructure/storage/IndexedDBKeyStorage';
 import { WebSocketSyncClient } from '@/infrastructure/sync/WebSocketSyncClient';
 import { Document } from '@/application/types/Document';
@@ -14,16 +13,11 @@ export const initializeServices = async (): Promise<void> => {
 
   try {
     // Initialize infrastructure services
-    const documentEncryption = new MockDocumentEncryption();
     const keyStorage = new IndexedDBKeyStorage();
     const syncClient = new WebSocketSyncClient();
 
     // Initialize application services
-    documentService = new DocumentService(
-      documentEncryption,
-      syncClient,
-      keyStorage
-    );
+    documentService = new DocumentService(syncClient, keyStorage);
     editorService = new EditorService();
 
     console.log('Services initialized successfully');
@@ -44,10 +38,7 @@ export const createDocument = async (): Promise<Document> => {
 
 export const connectToDocument = async (document: Document): Promise<void> => {
   ensureServicesInitialized();
-
-  // TODO: WebSocketエンドポイントが確定したら有効化
-  // WebSocket接続を有効化
-  // return await documentService!.connectToDocument(document)
+  return await documentService!.connectToDocument(document);
 };
 
 // ============================================================================

@@ -4,7 +4,7 @@ import { Base64, Base64x16, Base64x128, CONTENT_NIBBLES, TIMESTAMP_DIGITS } from
 
 // Dynamic import URL for tfhe.js (browser-only)
 function getTfheModuleUrl(): string {
-  const url = process.env.NEXT_PUBLIC_TFHE_JS_URL || '/tfhe/pkg/tfhe.js'
+  const url = process.env.NEXT_PUBLIC_TFHE_JS_URL || '/tfhe/tfhe.js'
   return url
 }
 

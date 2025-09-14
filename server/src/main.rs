@@ -11,7 +11,7 @@ use axum::{
 use futures::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, RwLock, Mutex};
 use std::time::{Duration, Instant};
 use tokio::net::TcpListener;
 use tokio::sync::broadcast;
@@ -23,6 +23,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilte
 use base64::{engine::general_purpose, Engine as _};
 use bincode;
 use tfhe::shortint::{Ciphertext as ShortintCiphertext, CompressedServerKey as ShortintCompressedServerKey, ServerKey as ShortintServerKey};
+use rusqlite::{Connection, params};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 struct WsClientUpdate {
@@ -46,6 +47,7 @@ struct AppState {
     contents: Arc<RwLock<HashMap<String, Vec<String>>>>,
     content_created: Arc<RwLock<HashMap<String, Instant>>>,
     rooms: Arc<RwLock<HashMap<String, broadcast::Sender<String>>>>,
+    db: Arc<Mutex<Connection>>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -210,12 +212,25 @@ async fn set_server_key_api(State(state): State<AppState>, Json(input): Json<Set
     if let Ok(sk_si) = bincode::deserialize::<ShortintServerKey>(&bytes) {
         let mut guard = state.shortint_server_key.write().unwrap();
         *guard = Some(sk_si);
+        // persist
+        if let Ok(db) = state.db.lock() {
+            let _ = db.execute("CREATE TABLE IF NOT EXISTS server_keys (id INTEGER PRIMARY KEY, kind TEXT NOT NULL, blob BLOB NOT NULL)", []);
+            let _ = db.execute("DELETE FROM server_keys", []);
+            let _ = db.execute("INSERT INTO server_keys (kind, blob) VALUES (?1, ?2)", params!["shortint_server_key", bytes]);
+        }
         return Json(serde_json::json!({"ok": true, "kind": "shortint_server_key"}));
     }
     if let Ok(csk_si) = bincode::deserialize::<ShortintCompressedServerKey>(&bytes) {
         let sk_si = csk_si.decompress();
         let mut guard = state.shortint_server_key.write().unwrap();
         *guard = Some(sk_si);
+        // persist
+        let blob = bytes; // store compressed bytes as-is
+        if let Ok(db) = state.db.lock() {
+            let _ = db.execute("CREATE TABLE IF NOT EXISTS server_keys (id INTEGER PRIMARY KEY, kind TEXT NOT NULL, blob BLOB NOT NULL)", []);
+            let _ = db.execute("DELETE FROM server_keys", []);
+            let _ = db.execute("INSERT INTO server_keys (kind, blob) VALUES (?1, ?2)", params!["shortint_compressed_server_key", blob]);
+        }
         return Json(serde_json::json!({"ok": true, "kind": "shortint_compressed_server_key"}));
     }
     Json(serde_json::json!({"ok": false, "error": "unrecognized server key payload"}))
@@ -226,12 +241,22 @@ async fn set_server_key_bin(State(state): State<AppState>, body: Bytes) -> Json<
     if let Ok(sk_si) = bincode::deserialize::<ShortintServerKey>(bytes) {
         let mut guard = state.shortint_server_key.write().unwrap();
         *guard = Some(sk_si);
+        if let Ok(db) = state.db.lock() {
+            let _ = db.execute("CREATE TABLE IF NOT EXISTS server_keys (id INTEGER PRIMARY KEY, kind TEXT NOT NULL, blob BLOB NOT NULL)", []);
+            let _ = db.execute("DELETE FROM server_keys", []);
+            let _ = db.execute("INSERT INTO server_keys (kind, blob) VALUES (?1, ?2)", params!["shortint_server_key", bytes]);
+        }
         return Json(serde_json::json!({"ok": true, "kind": "shortint_server_key"}));
     }
     if let Ok(csk_si) = bincode::deserialize::<ShortintCompressedServerKey>(bytes) {
         let sk_si = csk_si.decompress();
         let mut guard = state.shortint_server_key.write().unwrap();
         *guard = Some(sk_si);
+        if let Ok(db) = state.db.lock() {
+            let _ = db.execute("CREATE TABLE IF NOT EXISTS server_keys (id INTEGER PRIMARY KEY, kind TEXT NOT NULL, blob BLOB NOT NULL)", []);
+            let _ = db.execute("DELETE FROM server_keys", []);
+            let _ = db.execute("INSERT INTO server_keys (kind, blob) VALUES (?1, ?2)", params!["shortint_compressed_server_key", bytes]);
+        }
         return Json(serde_json::json!({"ok": true, "kind": "shortint_compressed_server_key"}));
     }
     Json(serde_json::json!({"ok": false, "error": "unrecognized server key payload (bin)"}))
@@ -274,13 +299,37 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer().with_target(false))
         .init();
 
+    // setup SQLite
+    let db_path = std::env::var("SQLITE_PATH").unwrap_or_else(|_| "./server_keys.sqlite".to_string());
+    let db = Connection::open(db_path).expect("open sqlite");
+    let _ = db.execute("CREATE TABLE IF NOT EXISTS server_keys (id INTEGER PRIMARY KEY, kind TEXT NOT NULL, blob BLOB NOT NULL)", []);
+
+    // try restore server key at boot
+    let mut restored_key: Option<ShortintServerKey> = None;
+    if let Ok(mut stmt) = db.prepare("SELECT kind, blob FROM server_keys ORDER BY id DESC LIMIT 1") {
+        if let Ok(mut rows) = stmt.query([]) {
+            if let Ok(Some(row)) = rows.next() {
+                let kind: String = row.get(0).unwrap_or_default();
+                let blob: Vec<u8> = row.get(1).unwrap_or_default();
+                if kind == "shortint_server_key" {
+                    if let Ok(sk) = bincode::deserialize::<ShortintServerKey>(&blob) { restored_key = Some(sk); }
+                } else if kind == "shortint_compressed_server_key" {
+                    if let Ok(csk) = bincode::deserialize::<ShortintCompressedServerKey>(&blob) { restored_key = Some(csk.decompress()); }
+                }
+            }
+        }
+    }
+
     let state = AppState {
         shortint_server_key: Arc::new(RwLock::new(None)),
         documents: Arc::new(RwLock::new(HashMap::new())),
         contents: Arc::new(RwLock::new(HashMap::new())),
         content_created: Arc::new(RwLock::new(HashMap::new())),
         rooms: Arc::new(RwLock::new(HashMap::new())),
+        db: Arc::new(Mutex::new(db)),
     };
+
+    if let Some(sk) = restored_key { *state.shortint_server_key.write().unwrap() = Some(sk); info!("shortint server key restored from sqlite"); }
 
     // TTL GC
     let gc_state = state.clone();

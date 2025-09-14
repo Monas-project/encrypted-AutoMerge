@@ -247,7 +247,7 @@ export default function Page() {
                   document={currentDocument}
                   onTextChange={onTextChange}
                   isConnected={isConnected}
-                  isLoading={false}
+                  isLoading={isLoading}
                 />
               </div>
             </div>
