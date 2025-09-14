@@ -1,6 +1,42 @@
+"use client";
 import Image from "next/image";
+import { useState } from "react";
 
 export default function Home() {
+  const [apiResult, setApiResult] = useState<string>("");
+  const [wasmResult, setWasmResult] = useState<string>("");
+  const [loading, setLoading] = useState<boolean>(false);
+
+  async function callTest() {
+    try {
+      setLoading(true);
+      const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+      const res = await fetch(`${base}/test`);
+      const data = await res.json();
+      setApiResult(JSON.stringify(data));
+    } catch (e: any) {
+      setApiResult(`error: ${e?.message || String(e)}`);
+    } finally {
+      setLoading(false);
+    }
+  }
+  async function runWasmOnTest() {
+    try {
+      const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+      const res = await fetch(`${base}/test`);
+      const data = await res.json();
+      const moduleUrl = `${window.location.origin}/wasm/test_wasm/pkg/test_wasm.js`;
+      // Avoid bundler resolution; load as runtime module from public/
+      const mod: any = await import(/* webpackIgnore: true */ moduleUrl);
+      if (mod.default) {
+        await mod.default();
+      }
+      const decorated = mod.decorate_message(String(data.message ?? JSON.stringify(data)));
+      setWasmResult(decorated);
+    } catch (e: any) {
+      setWasmResult(`error: ${e?.message || String(e)}`);
+    }
+  }
   return (
     <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
       <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
@@ -49,7 +85,29 @@ export default function Home() {
           >
             Read our docs
           </a>
+          <button
+            onClick={callTest}
+            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto"
+          >
+            {loading ? "Testing..." : "Call /test"}
+          </button>
+          <button
+            onClick={runWasmOnTest}
+            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto"
+          >
+            Wasm decorate /test
+          </button>
         </div>
+        {apiResult && (
+          <pre className="text-xs p-3 bg-black/[.05] dark:bg-white/[.06] rounded w-full max-w-xl break-words whitespace-pre-wrap">
+            {apiResult}
+          </pre>
+        )}
+        {wasmResult && (
+          <pre className="text-xs p-3 bg-black/[.05] dark:bg-white/[.06] rounded w-full max-w-xl break-words whitespace-pre-wrap">
+            {wasmResult}
+          </pre>
+        )}
       </main>
       <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
         <a
