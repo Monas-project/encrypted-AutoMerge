@@ -1,26 +1,58 @@
+@import url("https://fonts.googleapis.com/css2?family=Roboto&display=swap");
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  /* color */
+  --color-brand: #1a73e8;
+  --color-brand-dark: #1558b0;
+
+  /* shadow */
+  --shadow-page: 0 2px 8px rgba(0, 0, 0, 0.06), 0 8px 24px rgba(0, 0, 0, 0.08);
+
+  /* space */
+  --spacing-pageW: 816px;
+  --spacing-pageH: 1056px;
+
+  /* font */
+  --font-ui: Inter, system-ui, Segoe UI, Helvetica Neue, Arial, Noto Sans JP, sans-serif;
+  --font-serifdoc: "Times New Roman", Times, Noto Serif JP, serif;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+*::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+*::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 8px;
+}
+
+/* contenteditable の段落体裁 */
+.doc-p {
+  margin: 0 0 0.75rem 0;
+  line-height: 1.6;
+}
+
+
+:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+}
+
+/* input type=number のスピンボタンを削除 */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
 }
