@@ -25,6 +25,10 @@ export default function Page() {
       setLoading(true);
       const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
       const res = await fetch(`${base}/test`);
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`HTTP ${res.status}: ${text || 'no body'}`);
+      }
       const data = await res.json();
       setApiResult(JSON.stringify(data));
     } catch (e: any) {
@@ -37,6 +41,10 @@ export default function Page() {
     try {
       const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
       const res = await fetch(`${base}/test`);
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`HTTP ${res.status}: ${text || 'no body'}`);
+      }
       const data = await res.json();
       const moduleUrl = `${window.location.origin}/wasm/test_wasm/pkg/test_wasm.js`;
       // Avoid bundler resolution; load as runtime module from public/

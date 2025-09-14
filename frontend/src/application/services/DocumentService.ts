@@ -1,7 +1,8 @@
-import { Document, DocumentData, EncryptedDocument } from '../types/Document'
-import { DocumentEncryption } from '../../infrastructure/crypto/DocumentEncryption'
+import { Document } from '../types/Document'
 import { SyncClient } from '../../infrastructure/sync/SyncClient'
 import { KeyStorage } from '../../infrastructure/storage/KeyStorage'
+import { GetContentResponse, TIMESTAMP_DIGITS, WsClientUpdate, WsServerSelected } from '../types/fhe'
+import { loadTfhe, nextMonotonicTs, encryptU64ToDigitsB64Array, encryptContentToNibbleArrayB64, restoreClientKey, decryptDigitsB64ArrayToU64, decryptContentFromNibbleArrayB64 } from '../../infrastructure/crypto/TfheShortint'
 import { v4 as uuidv4 } from 'uuid'
 
 /**
@@ -13,7 +14,6 @@ export class DocumentService {
   private isConnected = false
 
   constructor(
-    private documentEncryption: DocumentEncryption,
     private syncClient: SyncClient,
     private keyStorage: KeyStorage
   ) {}
@@ -26,11 +26,9 @@ export class DocumentService {
     // 1. Generate new document ID
     const documentId = uuidv4()
     
-    // 2. Generate encryption key
-    const key = await this.documentEncryption.generateKey()
-    
-    // 3. Save key as string
-    const keyString = await this.documentEncryption.exportKey(key)
+    // 2. Generate shortint keys via worker path (or later from worker cache)
+    // ここでは簡易化: 既存保存が無ければ worker で生成した client_key をBase64で保存する設計とする
+    const keyString = await this.ensureClientKey(documentId)
     await this.keyStorage.saveKey(documentId, keyString)
     
     // 4. Create empty document
@@ -58,24 +56,15 @@ export class DocumentService {
       throw new Error('Invalid share URL')
     }
     
-    // 2. Import key
-    const key = await this.documentEncryption.importKey(urlData.key)
+    const _keyString = urlData.key // 互換用: 既存URLに載っている場合
     
     // 3. Get encrypted data from server
-    const encryptedDocument = await this.syncClient.getDocument(urlData.documentId)
+    const _selected = await this.syncClient.getDocument(urlData.documentId)
     
-    // 4. Decrypt encrypted data (temporary implementation)
-    const contentData = encryptedDocument.content_cts[0] // 配列の最初の要素を使用
-    const documentData: DocumentData = JSON.parse(
-      await this.documentEncryption.decrypt(contentData, key)
-    )
+    // 表示データはWSから選択ID受領 → HTTPフェッチ → 復号の流れで更新されるため、ここでは空
     
     // 5. Create document object
-    const document: Document = {
-      id: encryptedDocument.doc_id,
-      text: documentData.text,
-      timestamp: documentData.timestamp
-    }
+    const document: Document = { id: urlData.documentId, text: '', timestamp: Date.now() }
     
     // 6. Store as current document
     this.currentDocument = document
@@ -98,8 +87,8 @@ export class DocumentService {
       this.isConnected = true
 
       // Set up remote update listener
-      this.syncClient.onUpdate(async (encryptedDocument) => {
-        await this.handleRemoteUpdate(encryptedDocument)
+      this.syncClient.onUpdate(async (selected: WsServerSelected) => {
+        await this.handleRemoteUpdate(selected)
       })
 
       console.log(`Connected to document: ${document.id}`)
@@ -113,7 +102,7 @@ export class DocumentService {
    * Handle remote document updates
    * @param encryptedDocument Encrypted document from server
    */
-  private async handleRemoteUpdate(encryptedDocument: EncryptedDocument): Promise<void> {
+  private async handleRemoteUpdate(selected: WsServerSelected): Promise<void> {
     if (!this.currentDocument) {
       console.warn('Received remote update but no current document')
       return
@@ -121,27 +110,28 @@ export class DocumentService {
 
     try {
       // Get encryption key
-      const keyString = await this.keyStorage.loadKey(encryptedDocument.doc_id)
+      const keyString = await this.keyStorage.loadKey(selected.doc_id)
       if (!keyString) {
         console.error('Key not found for remote update')
         return
       }
-      const key = await this.documentEncryption.importKey(keyString)
-
-      // TODO: WASM暗号化サービスで新しい構造から復号化
-      // 現在は一時的にレガシー構造として処理
-      
-      // 新しい構造からコンテンツを復号化（WASMサービス実装後に置き換え）
-      const contentData = encryptedDocument.content_cts[0] // 配列の最初の要素を使用
-      const documentData: DocumentData = JSON.parse(
-        await this.documentEncryption.decrypt(contentData, key)
-      )
+      const tfhe = await loadTfhe()
+      const cks = await restoreClientKey(tfhe, keyString)
+      // decrypt selected id -> u64
+      const id = decryptDigitsB64ArrayToU64(tfhe, cks, selected.selected_id_cts)
+      const contentId = id.toString(10)
+      // fetch content via HTTP (no-store)
+      const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001'
+      const res = await fetch(`${apiBaseUrl}/content/${contentId}`, { cache: 'no-store' })
+      if (!res.ok) return
+      const json = (await res.json()) as GetContentResponse
+      const text = decryptContentFromNibbleArrayB64(tfhe, cks, json.content_cts)
 
       // Update current document
       this.currentDocument = {
         ...this.currentDocument,
-        text: documentData.text,
-        timestamp: documentData.timestamp
+        text,
+        timestamp: Date.now()
       }
 
       console.log('Document updated from remote:', this.currentDocument.id)
@@ -178,10 +168,7 @@ export class DocumentService {
    * @param document Document to update
    * @param newText New text
    */
-  async updateDocument(
-    document: Document, 
-    newText: string
-  ): Promise<void> {
+  async updateDocument(document: Document, newText: string): Promise<void> {
     // 1. Update document
     const updatedDocument: Document = {
       ...document,
@@ -194,37 +181,30 @@ export class DocumentService {
     if (!keyString) {
       throw new Error('Key not found')
     }
-    const key = await this.documentEncryption.importKey(keyString)
+    const tfhe = await loadTfhe()
+    const cks = await restoreClientKey(tfhe, keyString)
     
     // 3. Create encrypted data
-    const documentData: DocumentData = {
-      text: newText,
-      timestamp: updatedDocument.timestamp
-    }
-    
-    const encryptedContent = await this.documentEncryption.encrypt(
-      JSON.stringify(documentData), 
-      key
-    )
+    const ts = nextMonotonicTs()
+    const ts_cts = encryptU64ToDigitsB64Array(tfhe, cks, ts)
+    // random content_id (u64)
+    const randId = (BigInt.asUintN(64, BigInt(Math.floor(Math.random() * Number.MAX_SAFE_INTEGER))) << 1n) | 1n
+    const id_cts = encryptU64ToDigitsB64Array(tfhe, cks, randId)
+    const content_cts = encryptContentToNibbleArrayB64(tfhe, cks, newText)
     
     // 4. Update current document
     this.currentDocument = updatedDocument
     
     // 5. Send to server (if connected)
     if (this.isConnected) {
-      // TODO: WASM暗号化サービスで新しい構造に変換
-      // 現在は一時的にレガシー構造を使用
-      
-      // 新しい構造に変換（WASMサービス実装後に置き換え）
-      const encryptedDocument: EncryptedDocument = {
+      const outbound: WsClientUpdate = {
         doc_id: document.id,
-        ts_cts: [], // WASMで生成
-        id_cts: [], // WASMで生成
-        content_id: updatedDocument.timestamp.toString(),
-        content_cts: [encryptedContent] // 暗号化済みデータを配列として送信
+        ts_cts: ts_cts as unknown as string[],
+        id_cts: id_cts as unknown as string[],
+        content_id: randId.toString(10) as any,
+        content_cts: content_cts as unknown as string[],
       }
-      
-      await this.syncClient.sendUpdate(encryptedDocument)
+      await this.syncClient.sendUpdate(outbound)
     }
   }
 
@@ -278,5 +258,47 @@ export class DocumentService {
     } catch {
       return null
     }
+  }
+
+  private async ensureClientKey(documentId: string): Promise<string> {
+    const existing = await this.keyStorage.loadKey(documentId)
+    if (existing) return existing
+    // generate via worker
+    const workerUrl = new URL('../../worker/ckgen-worker.js', import.meta.url)
+    const w = new Worker(workerUrl, { type: 'module' })
+    const tfheModuleUrl = process.env.NEXT_PUBLIC_TFHE_JS_URL || '/tfhe/pkg/tfhe.js'
+    const b64 = await new Promise<string>((resolve, reject) => {
+      const onMsg = (ev: MessageEvent) => {
+        const d = ev.data || {}
+        if (d.t === 'keys') {
+          const cksBytes = new Uint8Array(d.client_key_bytes)
+          // encode base64 w/o Buffer for browser
+          let binary = ''
+          for (let i = 0; i < cksBytes.length; i++) binary += String.fromCharCode(cksBytes[i])
+          const b64 = btoa(binary)
+
+          // also send compressed server key to server
+          const c_sks_bytes = new Uint8Array(d.c_sks_bytes)
+          let bin2 = ''
+          for (let i = 0; i < c_sks_bytes.length; i++) bin2 += String.fromCharCode(c_sks_bytes[i])
+          const csk_b64 = btoa(bin2)
+          // POST to /keys/set_server_key
+          fetch((process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001') + '/keys/set_server_key', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ server_key_b64: csk_b64 }),
+          }).catch(() => {})
+
+          w.removeEventListener('message', onMsg as any)
+          resolve(b64)
+        } else if (d.t === 'err') {
+          reject(new Error(d.msg))
+        }
+      }
+      w.addEventListener('message', onMsg as any)
+      w.postMessage({ t: 'gen', tfheModuleUrl })
+    })
+    await this.keyStorage.saveKey(documentId, b64)
+    return b64
   }
 }
