@@ -78,6 +78,10 @@ This theme addresses a particularly challenging issue: **"automatically merging 
 
 ## System Overview
 ![System Architecture Diagram](./images/architecture.jpg)
+This diagram illustrates the basic workflow of encrypted-AutoMerge.
+Users A and B each encrypt their content locally and send the encrypted data to the server. Without ever decrypting, the server compares the encrypted data and determines which update is the most recent.
+
+The selected encrypted data is then broadcast to all clients. Each client decrypts the result using its own key and updates the UI, ensuring that the overall state converges consistently.
 
 ## Sequence Diagram
 
