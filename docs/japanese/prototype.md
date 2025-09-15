@@ -2,7 +2,24 @@
 
 ## Table of Contents
 
-- introduction
+- [Introduction](#introduction)
+- [Background](#background)
+  - [CRDTとは？](#crdtとは)
+  - [FHEとは？](#fheとは)
+  - [TFHEとは？](#tfheとは)
+  - [LWWとは？](#lwwとは)
+  - [大前提](#大前提)
+- [System Overview](#system-overview)
+- [シーケンス図](#シーケンス図)
+- [Prototype Implementation](#prototype-implementation)
+  - [基本フロー](#基本フロー)
+  - [暗号化比較の実装](#暗号化比較の実装)
+  - [条件付き選択 (MUX)](#条件付き選択-mux)
+  - [WebSocket による同期](#websocket-による同期)
+- [Future Directions](#future-directions)
+  - [Toward Distributed Auto-Merge](#toward-distributed-auto-merge)
+  - [Toward Text-based CRDT under Encryption](#toward-text-based-crdt-under-encryption)
+  - [Client-side Merge with Proofs](#client-side-merge-with-proofs)
 
 ## Introduction
 
@@ -60,6 +77,7 @@ encrypted-AutoMerge は、**Fully Homomorphic Encryption (FHE)** と **CRDT (Con
 今回のテーマは、その中でも特に難易度が高い 「コンテンツの内容を秘匿したまま差分も含めて自動統合する」 という課題である。暗号化状態での統合は容易ではなく計算コストも大きいため、まずは第一段階として、TFHEを用いた暗号化タイムスタンプ比較によるLWW方式を実装した。これにより、秘匿性を保ったまま「どちらの更新が最新か」を判定し、自動的に状態を収束させることが可能になった。
 
 ## System Overview
+![システム概要図](./images/architecture.jpg)
 
 ## シーケンス図
 
@@ -90,6 +108,65 @@ sequenceDiagram
 ```
 
 ## Prototype Implementation
+本プロトタイプでは、暗号化されたまま LWW (Last-Writer-Wins) に基づくオートマージ を実装している。サーバーは一切復号せず、クライアントから送信される暗号化データをそのまま比較・選択する。
+
+### 基本フロー
+1.	クライアントは編集時に 暗号化された Timestamp と ID を生成し、WebSocket 経由でサーバーへ送信する。
+2.	サーバーは既存の選択済み状態（過去の Timestamp, ID）と受信データを 暗号化比較する。
+3.	最新の更新（大きい Timestamp）を持つ方を選択し、暗号化されたまま保存する。
+4.	選択結果を全クライアントに配信。各クライアントは鍵を持っているため復号し UI を更新できる。
+
+### 暗号化比較の実装
+サーバーは TFHE の ServerKey を用いて、暗号化された Timestamp を比較する。
+```rust
+fn shortint_gt_digits(
+    sk: &ShortintServerKey,
+    a: &[ShortintCiphertext],
+    b: &[ShortintCiphertext]
+) -> ShortintCiphertext {
+    let mut eq_prefix = sk.create_trivial(1); // ここまで等しい
+    let mut res = sk.create_trivial(0);       // 比較結果 (a > b)
+
+    for (da, db) in a.iter().zip(b.iter()) {
+        let gt_i = sk.unchecked_greater(da, db); // a_i > b_i ?
+        let eq_i = sk.unchecked_equal(da, db);   // a_i == b_i ?
+
+        let term = sk.unchecked_bitand(&eq_prefix, &gt_i);
+        res = sk.unchecked_bitor(&res, &term);
+
+        eq_prefix = sk.unchecked_bitand(&eq_prefix, &eq_i);
+    }
+    res
+}
+```
+このロジックにより、復号せずに「どちらの Timestamp が新しいか」を判定できる。
+その結果は暗号化されたブール値として返り、次の選択処理に利用される。  
+
+
+### 条件付き選択 (MUX)
+比較結果に基づき、新旧どちらのデータを選ぶかを暗号状態で決定する。
+```rust
+fn shortint_mux(
+    sk: &ShortintServerKey,
+    sel: &ShortintCiphertext,
+    x: &ShortintCiphertext,
+    y: &ShortintCiphertext
+) -> ShortintCiphertext {
+    let one = sk.create_trivial(1);
+    let not_sel = sk.unchecked_bitxor(&one, sel);
+
+    let lut_and = sk.generate_lookup_table_bivariate(|s, v| if s == 1 { v } else { 0 });
+    let a = sk.unchecked_apply_lookup_table_bivariate(sel, x, &lut_and);
+    let b = sk.unchecked_apply_lookup_table_bivariate(&not_sel, y, &lut_and);
+    sk.unchecked_bitor(&a, &b)
+}
+```
+これにより、暗号化されたまま「新しい Timestamp に対応する ID」や「最新のコンテンツ識別子」を選び取れる。
+
+### WebSocket による同期
+- 各クライアントは編集時に更新を送信。
+- サーバーは LWW 判定を行い、選ばれた暗号化データを 全クライアントにブロードキャスト。
+- クライアントは復号して UI を更新する。
 
 ## Future Directions
 
