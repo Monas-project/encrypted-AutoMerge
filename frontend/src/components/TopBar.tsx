@@ -9,9 +9,10 @@ type Props = {
     onTitleChange: (v: string) => void
     zoom: number
     onZoomChange: (v: number) => void
+    onShareClick?: () => void;
 };
 
-export default function TopBar({ title, onTitleChange, zoom, onZoomChange }: Props) {
+export default function TopBar({ title, onTitleChange, zoom, onZoomChange, onShareClick, }: Props) {
     const spanRef = useRef<HTMLSpanElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const [inputWidth, setInputWidth] = useState(0);

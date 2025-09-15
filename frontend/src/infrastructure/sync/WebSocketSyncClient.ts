@@ -1,14 +1,14 @@
-import { SyncClient } from './SyncClient';
-import { EncryptedDocument } from '../../application/types/Document';
+import { SyncClient } from './SyncClient'
+import { WsClientUpdate, WsServerSelected } from '../../application/types/fhe'
 
 /**
  * WebSocket sync client implementation
  * Handles real-time synchronization with encrypted documents
  */
 export class WebSocketSyncClient implements SyncClient {
-  private ws: WebSocket | null = null;
-  private documentId: string | null = null;
-  private updateCallbacks: ((data: EncryptedDocument) => void)[] = [];
+  private ws: WebSocket | null = null
+  private documentId: string | null = null
+  private updateCallbacks: ((data: WsServerSelected) => void)[] = []
 
   private reconnectAttempts = 0;
   private readonly maxReconnectAttempts = 5;
@@ -21,88 +21,86 @@ export class WebSocketSyncClient implements SyncClient {
    * @param documentId Document ID
    */
   async connect(documentId: string): Promise<void> {
-    this.documentId = documentId;
-
-    // TODO: WebSocketエンドポイントが確定したら有効化
-    console.log('WebSocket connection disabled - endpoint not configured');
-    return Promise.resolve();
-
-    // return new Promise((resolve, reject) => {
-    //   try {
-    //     const wsBaseUrl = process.env.NEXT_PUBLIC_WS_BASE_URL || 'ws://localhost:8080'
-    //     const wsEndpoint = process.env.NEXT_PUBLIC_WS_ENDPOINT || '/ws'
-    //     const url = `${wsBaseUrl}${wsEndpoint}?doc=${documentId}`
-    //     this.ws = new WebSocket(url)
-
-    //     this.ws.onopen = () => {
-    //       console.log(`Connected to document: ${documentId}`)
-    //       this.reconnectAttempts = 0
-    //       resolve()
-    //     }
-    //
-    //     this.ws.onmessage = (event) => {
-    //       try {
-    //         const data: EncryptedDocument = JSON.parse(event.data)
-    //         this.updateCallbacks.forEach(callback => callback(data))
-    //       } catch (error) {
-    //         console.error('Failed to parse message:', error)
-    //       }
-    //     }
-    //
-    //     this.ws.onclose = (event) => {
-    //       console.log('WebSocket closed:', event.code, event.reason)
-    //
-    //       // 再接続ロジック
-    //       if (this.reconnectAttempts < this.maxReconnectAttempts) {
-    //         setTimeout(async () => {
-    //           this.reconnectAttempts++
-    //           try {
-    //             // 再接続前に最新のドキュメントデータを取得
-    //             const latestDocument = await this.getDocument(documentId)
-    //
-    //             // 最新データをコールバックに通知
-    //             this.updateCallbacks.forEach(callback => callback(latestDocument))
-    //
-    //             // WebSocket再接続
-    //             await this.connect(documentId)
-    //           } catch (error) {
-    //             console.error('Reconnection failed:', error)
-    //             // 再接続失敗時は次の試行を継続
-    //             if (this.reconnectAttempts < this.maxReconnectAttempts) {
-    //               setTimeout(() => {
-    //                 this.reconnectAttempts++
-    //                 this.connect(documentId)
-    //               }, this.reconnectDelay * this.reconnectAttempts)
-    //             }
-    //           }
-    //         }, this.reconnectDelay * this.reconnectAttempts)
-    //       }
-    //     }
-    //
-    //     this.ws.onerror = (error) => {
-    //       console.error('WebSocket error:', error)
-    //       reject(new Error('WebSocket connection failed'))
-    //     }
-    //
-    //   } catch (error) {
-    //     reject(error)
-    //   }
-    // })
+    this.documentId = documentId
+    
+    return new Promise((resolve, reject) => {
+      try {
+        const wsBaseUrl = process.env.NEXT_PUBLIC_WS_BASE_URL || 'ws://localhost:3001'
+        const wsEndpoint = process.env.NEXT_PUBLIC_WS_ENDPOINT || '/ws'
+        const url = `${wsBaseUrl}${wsEndpoint}?doc_id=${documentId}`
+        console.log('[ws] connecting', { url, documentId })
+        this.ws = new WebSocket(url)
+        
+        this.ws.onopen = () => {
+          console.log('[ws] open', { documentId })
+          this.reconnectAttempts = 0
+          resolve()
+        }
+        
+        this.ws.onmessage = (event) => {
+          try {
+            const data: WsServerSelected = JSON.parse(event.data)
+            console.log('[ws] message', { documentId: this.documentId, len: data.selected_id_cts?.length })
+            this.updateCallbacks.forEach(callback => callback(data))
+          } catch (error) {
+            console.error('[ws] parse error', error)
+          }
+        }
+        
+        this.ws.onclose = (event) => {
+          console.log('[ws] close', event.code, event.reason)
+          
+          // 再接続ロジック
+          if (this.reconnectAttempts < this.maxReconnectAttempts) {
+            setTimeout(async () => {
+              this.reconnectAttempts++
+              try {
+                // 再接続前に最新のドキュメントデータを取得
+                const latestDocument = await this.getDocument(documentId)
+                
+                // 最新データをコールバックに通知
+                this.updateCallbacks.forEach(callback => callback(latestDocument))
+                
+                // WebSocket再接続
+                await this.connect(documentId)
+              } catch (error) {
+                console.error('Reconnection failed:', error)
+                // 再接続失敗時は次の試行を継続
+                if (this.reconnectAttempts < this.maxReconnectAttempts) {
+                  setTimeout(() => {
+                    this.reconnectAttempts++
+                    this.connect(documentId)
+                  }, this.reconnectDelay * this.reconnectAttempts)
+                }
+              }
+            }, this.reconnectDelay * this.reconnectAttempts)
+          }
+        }
+        
+        this.ws.onerror = (error) => {
+          console.error('[ws] error', error)
+          reject(new Error('WebSocket connection failed'))
+        }
+        
+      } catch (error) {
+        reject(error)
+      }
+    })
   }
 
   /**
    * Receive document updates
    * @param callback Callback to receive update data
    */
-  onUpdate(callback: (data: EncryptedDocument) => void): void {
-    this.updateCallbacks.push(callback);
+  onUpdate(callback: (data: WsServerSelected) => void): void {
+    this.updateCallbacks.push(callback)
   }
 
   /**
    * Send encrypted data to server
    * @param encryptedDocument Encrypted document data
    */
-  async sendUpdate(encryptedDocument: EncryptedDocument): Promise<void> {
+  async sendUpdate(update: WsClientUpdate): Promise<void> {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       throw new Error('WebSocket is not connected');
     }
@@ -112,7 +110,7 @@ export class WebSocketSyncClient implements SyncClient {
     }
 
     try {
-      this.ws.send(JSON.stringify(encryptedDocument));
+      this.ws.send(JSON.stringify(update))
     } catch (error) {
       throw new Error(`Failed to send update: ${error}`);
     }
@@ -123,24 +121,21 @@ export class WebSocketSyncClient implements SyncClient {
    * @param documentId Document ID
    * @returns Latest encrypted document data
    */
-  async getDocument(documentId: string): Promise<EncryptedDocument> {
+  async getDocument(documentId: string): Promise<WsServerSelected> {
     try {
-      const apiBaseUrl =
-        process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
-      const documentsEndpoint =
-        process.env.NEXT_PUBLIC_API_DOCUMENTS_ENDPOINT || '/api/documents';
-      const url = `${apiBaseUrl}${documentsEndpoint}/${documentId}`;
-
-      const response = await fetch(url);
-
+      const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001'
+      const url = `${apiBaseUrl}/ws?doc_id=${documentId}`
+      
+      const response = await fetch(url)
+      
       if (!response.ok) {
         throw new Error(
           `Failed to fetch document: ${response.status} ${response.statusText}`
         );
       }
-
-      const data: EncryptedDocument = await response.json();
-      return data;
+      
+      const data: WsServerSelected = await response.json()
+      return data
     } catch (error) {
       throw new Error(`Failed to get document: ${error}`);
     }

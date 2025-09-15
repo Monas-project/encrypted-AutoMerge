@@ -1,6 +1,5 @@
 import { DocumentService } from '@/application/services/DocumentService';
 import { EditorService } from '@/application/services/EditorService';
-import { MockDocumentEncryption } from '@/infrastructure/crypto/MockDocumentEncryption';
 import { IndexedDBKeyStorage } from '@/infrastructure/storage/IndexedDBKeyStorage';
 import { WebSocketSyncClient } from '@/infrastructure/sync/WebSocketSyncClient';
 import { Document } from '@/application/types/Document';
@@ -14,16 +13,12 @@ export const initializeServices = async (): Promise<void> => {
 
   try {
     // Initialize infrastructure services
-    const documentEncryption = new MockDocumentEncryption();
     const keyStorage = new IndexedDBKeyStorage();
     const syncClient = new WebSocketSyncClient();
 
     // Initialize application services
-    documentService = new DocumentService(
-      documentEncryption,
-      syncClient,
-      keyStorage
-    );
+    documentService = new DocumentService(syncClient, keyStorage);
+    ;(globalThis as any)._docSvc = documentService
     editorService = new EditorService();
 
     console.log('Services initialized successfully');
@@ -44,11 +39,12 @@ export const createDocument = async (): Promise<Document> => {
 
 export const connectToDocument = async (document: Document): Promise<void> => {
   ensureServicesInitialized();
-
-  // TODO: WebSocketエンドポイントが確定したら有効化
-  // WebSocket接続を有効化
-  // return await documentService!.connectToDocument(document)
+  return await documentService!.connectToDocument(document);
 };
+export const setKeyForDocument = async (documentId: string, key: string): Promise<void> => {
+  ensureServicesInitialized();
+  return await documentService!.setKeyForDocument(documentId, key)
+}
 
 // ============================================================================
 // Editor Actions
@@ -90,6 +86,11 @@ export const getCurrentDocument = (): Document | null => {
   ensureServicesInitialized();
   return documentService!.getCurrentDocument();
 };
+
+export const getShareLink = async (documentId: string): Promise<string> => {
+  ensureServicesInitialized();
+  return await documentService!.shareDocument(documentId)
+}
 // Service instances (singleton pattern)
 let documentService: DocumentService | null = null;
 let editorService: EditorService | null = null;
