@@ -30,7 +30,7 @@ if [[ "${ALLOW_SUDO:-}" == "1" ]] && command -v sudo >/dev/null 2>&1; then
 fi
 
 pushd "$REPO_ROOT/frontend" >/dev/null
-echo "[INFO] Building Next.js static export"
+echo "[INFO] Building Next.js app"
 npm ci --no-audit --no-fund
 npm run build
 popd >/dev/null

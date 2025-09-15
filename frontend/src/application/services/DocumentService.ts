@@ -273,10 +273,10 @@ export class DocumentService {
    * @returns Share URL
    */
   private generateShareUrl(documentId: string, key: string): string {
-    // フラグメントに鍵を載せる: /doc/{doc_id}#k={base64}
+    // フラグメントに鍵を載せる: /doc?doc_id={id}#k={base64}
     const origin = typeof window !== 'undefined' ? window.location.origin : ''
     const base = origin || ''
-    return `${base}/doc/${documentId}#k=${encodeURIComponent(key)}`
+    return `${base}/doc?doc_id=${encodeURIComponent(documentId)}#k=${encodeURIComponent(key)}`
   }
 
   /**

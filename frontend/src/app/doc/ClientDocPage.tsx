@@ -1,13 +1,13 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { initializeServices, connectToDocument, setKeyForDocument, setupDocumentUpdateListener, getShareLink } from '../../actions'
+import { initializeServices, connectToDocument, setKeyForDocument, setupDocumentUpdateListener, getShareLink } from '../actions'
 import { Document } from '@/application/types/Document'
 import TopBar from '@/components/TopBar'
 import Toolbar from '@/components/Toolbar'
 import Ruler from '@/components/Ruler'
 import EditorPage from '@/components/EditorPage'
 
-export default function ClientDocPage({ params }: { params: { doc_id: string } }) {
+export default function ClientDocPage() {
   const [doc, setDoc] = useState<Document | null>(null)
   const [title, setTitle] = useState('無題のドキュメント')
   const [zoom, setZoom] = useState(1)
@@ -24,7 +24,10 @@ export default function ClientDocPage({ params }: { params: { doc_id: string } }
     (async () => {
       try {
         await initializeServices()
-        const routeDocId = (params && params.doc_id) || (typeof window !== 'undefined' ? (window.location.pathname.split('/')[2] || '') : '')
+        const routeDocId = typeof window !== 'undefined'
+          ? (new URLSearchParams(window.location.search).get('doc_id')
+              || (window.location.pathname.split('/')[2] || ''))
+          : ''
         if (!routeDocId) {
           setError('URLにdoc_idが含まれていません。')
           return
@@ -49,7 +52,7 @@ export default function ClientDocPage({ params }: { params: { doc_id: string } }
         setError(e?.message || String(e))
       }
     })()
-  }, [params.doc_id])
+  }, [])
 
   if (error) {
     return <div className='p-6 text-red-600'>{error}</div>
@@ -68,7 +71,7 @@ export default function ClientDocPage({ params }: { params: { doc_id: string } }
           onZoomChange={setZoom}
           onShareClick={async () => {
             try {
-              const id = (doc?.id) || params.doc_id || (typeof window !== 'undefined' ? window.location.pathname.split('/')[2] : '')
+              const id = (doc?.id) || (typeof window !== 'undefined' ? window.location.pathname.split('/')[2] : '')
               const url = await getShareLink(id)
               await navigator.clipboard.writeText(url)
               alert('共有リンクをコピーしました')
