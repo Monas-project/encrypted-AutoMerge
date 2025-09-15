@@ -16,7 +16,7 @@ import {
   getShareLink,
 } from './actions';
 
-const DEFAULT_TITLE = '無題のドキュメント';
+const DEFAULT_TITLE = 'Untitled document';
 
 export default function Page() {
   const [title, setTitle] = useState(DEFAULT_TITLE);

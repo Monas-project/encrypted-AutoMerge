@@ -106,7 +106,7 @@ export default function EditorPage(props: Props) {
       >
         <div
           ref={ref}
-          className="w-full h-full overflow-auto"
+          className="w-full h-full overflow-auto focus:outline-none"
           contentEditable
           suppressContentEditableWarning
           spellCheck={false}
